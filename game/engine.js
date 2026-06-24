@@ -208,6 +208,11 @@ export function createGame({ canvas, callbacks }) {
                 foods.splice(i, 1);
                 emit('scoreChange', { score, length: snake.segments.length });
                 emit('buffChange', serializeBuffs());
+                emit('eatEvent', {
+                    jackpot: !!f.jackpot,
+                    tier: f.tier || 'common',
+                    comboCount,
+                });
                 break;
             }
         }
