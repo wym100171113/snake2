@@ -1,8 +1,6 @@
 // renderer.js — 2D 自由移动蛇的 Canvas 2D 渲染
 // 蛇身：圆角胶囊体，沿 segment 列表用粗线条 + 圆形头尾绘制
 
-import { FOOD_TYPES } from './food.js';
-
 const COLORS = {
     bgInner: '#FFFAF5',
     bgOuter: '#E8F4FF',
@@ -130,11 +128,10 @@ export function createRenderer(canvas) {
         const cy = food.y;
         const baseR = food.radius;
         let pulse = 0;
-        if (food.expiresAfter) {
-            const remain = (food.expiresAfter - (time - food.spawnedAt)) / 1000;
-            if (remain < 3 && remain > 0) {
-                pulse = Math.sin(time / 120) * 0.18 * (3 - remain) / 3;
-            }
+        // 过期前 3 秒脉动
+        const remain = Math.max(0, food.expiresAt - time) / 1000;
+        if (remain < 3 && remain > 0) {
+            pulse = Math.sin(time / 80) * 0.18 * (3 - remain) / 3;
         }
         const r = baseR * (1 + pulse);
 
@@ -146,6 +143,28 @@ export function createRenderer(canvas) {
         ctx.beginPath();
         ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2);
         ctx.fill();
+
+        // 大奖额外光环
+        if (food.jackpot) {
+            const ringR = r * 1.5 + Math.sin(time / 200) * 4;
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        if (food.tier === 'legendary') {
+            const ringR = r * 1.4 + Math.sin(time / 200) * 3;
+            ctx.strokeStyle = 'rgba(46, 204, 113, 0.45)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
         // 主体
         ctx.fillStyle = food.color;
@@ -266,6 +285,23 @@ export function createRenderer(canvas) {
         ctx.globalAlpha = 1;
     }
 
+    function drawScorePopup(popup) {
+        if (!popup || popup.alpha <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, popup.alpha);
+        ctx.font = 'bold 22px "Quicksand", "Nunito", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // 描边
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 3;
+        ctx.strokeText(popup.text, popup.x, popup.y);
+        // 填充
+        ctx.fillStyle = popup.text === 'JACKPOT!' ? '#FF6B9D' : '#FFB347';
+        ctx.fillText(popup.text, popup.x, popup.y);
+        ctx.restore();
+    }
+
     function drawFlash(alpha) {
         if (alpha <= 0) return;
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
@@ -279,6 +315,7 @@ export function createRenderer(canvas) {
         for (const f of (state.foods || [])) drawFood(f, time);
         if (state.showSnake !== false && state.snake) drawSnake(state.snake, time);
         drawParticles();
+        drawScorePopup(state.scorePopup);
         drawFlash(state.flashAlpha || 0);
     }
 
@@ -315,6 +352,3 @@ function hexA(hex, a) {
     const b = num & 255;
     return `rgba(${r},${g},${b},${a})`;
 }
-
-// 抑制未用导入警告
-void FOOD_TYPES;

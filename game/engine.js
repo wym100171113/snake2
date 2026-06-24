@@ -6,7 +6,7 @@ import {
     grow, checkWallCollision, checkSelfCollision, eats,
     setSpeedFactor,
 } from './snake.js';
-import { maintainFoods } from './food.js';
+import { maintainFoods, burstSpawn } from './food.js';
 import { createRenderer, updateParticles, spawnParticles } from './renderer.js';
 
 const STATE = {
@@ -15,6 +15,9 @@ const STATE = {
     PAUSED: 'paused',
     GAME_OVER: 'gameover',
 };
+
+const FOOD_TARGET = 8;       // 场上同时食物数量
+const BURST_INTERVAL = 18;   // 每隔多少秒爆发一批新食物
 
 export function createGame({ canvas, callbacks }) {
     const renderer = createRenderer(canvas);
@@ -29,6 +32,10 @@ export function createGame({ canvas, callbacks }) {
     let rafId = 0;
     let stopFlag = false;
     let speedFactor = 1;
+    let burstTimer = 0;          // 爆发倒计时
+    let comboCount = 0;          // 连击计数
+    let comboTimer = 0;          // 连击窗口
+    let scorePopup = null;       // 临时飘字 { x, y, text, alpha, vy }
 
     function emit(evt, payload) {
         if (callbacks && typeof callbacks[evt] === 'function') {
@@ -66,27 +73,28 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function startNewGame() {
-        const m = renderer.getMetrics();
         const area = renderer.getArea();
         const startX = area.x + area.width * 0.5;
         const startY = area.y + area.height * 0.5;
-        // 速度根据画布尺寸微调（手机屏幕小 → 速度略低）
         const scale = Math.min(1, Math.min(area.width, area.height) / 500);
         snake = createSnake({
             x: startX,
             y: startY,
             initialAngle: 0,
             initialLength: 4,
-            baseSpeed: 110 * scale,
+            baseSpeed: 120 * scale,   // 略快
             segmentRadius: 11 * scale,
-            turnRate: 4.8,
+            turnRate: 5.2,            // 转向更灵敏
         });
-        // 初始在中心放一个食物
-        foods = maintainFoods([], renderer.getArea(), snake, 4);
+        foods = maintainFoods([], renderer.getArea(), snake, FOOD_TARGET);
         score = 0;
         buffs.clear();
         speedFactor = 1;
         flashAlpha = 0;
+        burstTimer = BURST_INTERVAL;
+        comboCount = 0;
+        comboTimer = 0;
+        scorePopup = null;
         state = STATE.PLAYING;
         lastFrame = performance.now();
         emit('stateChange', state);
@@ -135,8 +143,7 @@ export function createGame({ canvas, callbacks }) {
         const list = [];
         for (const [type, b] of buffs) {
             list.push({
-                type,
-                factor: b.factor,
+                type, factor: b.factor,
                 remain: Math.max(0, b.remain),
                 duration: b.duration,
             });
@@ -145,27 +152,24 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function doStep(dt) {
-        // 推进蛇
         snakeUpdate(snake, dt);
 
-        // 碰撞：墙
         const area = renderer.getArea();
         const wall = checkWallCollision(snake, area);
         if (wall) {
             flashAlpha = 0.35;
-            const head = snake.segments[0];
-            spawnParticles(head.x, head.y, '#FF8B94', 18);
-            spawnParticles(head.x, head.y, '#A8E6CF', 10);
+            const h = snake.segments[0];
+            spawnParticles(h.x, h.y, '#FF8B94', 18);
+            spawnParticles(h.x, h.y, '#A8E6CF', 10);
             gameOver();
             return;
         }
-        // 碰撞：自身
         const self = checkSelfCollision(snake);
         if (self) {
             flashAlpha = 0.35;
-            const head = snake.segments[0];
-            spawnParticles(head.x, head.y, '#FF8B94', 18);
-            spawnParticles(head.x, head.y, '#A8E6CF', 10);
+            const h = snake.segments[0];
+            spawnParticles(h.x, h.y, '#FF8B94', 18);
+            spawnParticles(h.x, h.y, '#A8E6CF', 10);
             gameOver();
             return;
         }
@@ -174,11 +178,33 @@ export function createGame({ canvas, callbacks }) {
         for (let i = 0; i < foods.length; i++) {
             const f = foods[i];
             if (eats(snake, f)) {
-                score += f.score;
+                // 连击
+                comboCount++;
+                comboTimer = 1.5;  // 1.5 秒内吃到下一个算连击
+                const comboBonus = Math.min(comboCount - 1, 5) * 0.1; // 最多 +50%
+                const finalScore = Math.round(f.score * (1 + comboBonus));
+
+                score += finalScore;
                 grow(snake, f.growth);
                 if (f.buff) applyBuff(f.buff);
-                spawnParticles(f.x, f.y, f.color, 14);
-                if (f.buff) spawnParticles(f.x, f.y, '#FFD96A', 8);
+
+                // 粒子效果：大奖用更多粒子
+                const particleCount = f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14;
+                spawnParticles(f.x, f.y, f.color, particleCount);
+                if (f.jackpot) {
+                    spawnParticles(f.x, f.y, '#FFD700', 20);
+                    spawnParticles(f.x, f.y, '#FF6B9D', 20);
+                    flashAlpha = 0.15;
+                }
+                if (f.buff) spawnParticles(f.x, f.y, '#FFD96A', 10);
+
+                // 飘字
+                if (comboCount >= 3) {
+                    scorePopup = { x: f.x, y: f.y - 20, text: `x${comboCount}`, alpha: 1, vy: -60 };
+                } else if (f.jackpot) {
+                    scorePopup = { x: f.x, y: f.y - 20, text: 'JACKPOT!', alpha: 1, vy: -80 };
+                }
+
                 foods.splice(i, 1);
                 emit('scoreChange', { score, length: snake.segments.length });
                 emit('buffChange', serializeBuffs());
@@ -194,20 +220,40 @@ export function createGame({ canvas, callbacks }) {
         lastFrame = now;
 
         updateParticles(delta);
-
         if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - delta / 0.6);
+
+        // 连击计时器衰减
+        if (comboTimer > 0) {
+            comboTimer -= delta;
+            if (comboTimer <= 0) comboCount = 0;
+        }
+
+        // 飘字动画
+        if (scorePopup) {
+            scorePopup.y += scorePopup.vy * delta;
+            scorePopup.alpha -= delta * 1.2;
+            if (scorePopup.alpha <= 0) scorePopup = null;
+        }
 
         if (state === STATE.PLAYING && snake && snake.alive) {
             tickBuffs(delta * 1000);
             doStep(delta);
+
+            // 爆发计时器
+            burstTimer -= delta;
+            if (burstTimer <= 0) {
+                burstTimer = BURST_INTERVAL + Math.random() * 6;
+                const newFoods = burstSpawn(renderer.getArea(), snake, 3 + Math.floor(Math.random() * 3));
+                foods.push(...newFoods);
+            }
         }
 
         if (state === STATE.PLAYING && snake) {
-            foods = maintainFoods(foods, renderer.getArea(), snake, 4);
+            foods = maintainFoods(foods, renderer.getArea(), snake, FOOD_TARGET);
         }
 
         renderer.render({
-            snake, foods, flashAlpha,
+            snake, foods, flashAlpha, scorePopup,
             showSnake: state === STATE.PLAYING || state === STATE.GAME_OVER || state === STATE.PAUSED,
         }, now);
 
@@ -231,13 +277,12 @@ export function createGame({ canvas, callbacks }) {
         foods = [];
         buffs.clear();
         flashAlpha = 0;
+        scorePopup = null;
     }
 
     function resize() {
-        // 优先用 canvas-wrap 的尺寸
         const wrap = canvas.parentElement;
-        let wrapW = 0;
-        let wrapH = 0;
+        let wrapW = 0, wrapH = 0;
         if (wrap) {
             const r = wrap.getBoundingClientRect();
             wrapW = r.width;
@@ -247,7 +292,6 @@ export function createGame({ canvas, callbacks }) {
             wrapW = window.innerWidth;
             wrapH = window.innerHeight;
         }
-        // canvas 内 padding（CSS 12px）
         const padding = 24;
         renderer.resize(wrapW - padding, wrapH - padding);
     }
@@ -260,11 +304,7 @@ export function createGame({ canvas, callbacks }) {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return {
-        start,
-        stop,
-        resize,
-        startNewGame,
-        togglePause,
+        start, stop, resize, startNewGame, togglePause,
         setDirection: setDirectionFromInput,
         getState: () => state,
         getBestScore: () => bestScore,
