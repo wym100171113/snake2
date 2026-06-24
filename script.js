@@ -1,199 +1,216 @@
-const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d');
-const startPanel = document.getElementById('start-panel');
-const startBtn = document.getElementById('start-btn');
-const scoreElement = document.getElementById('score');
+// script.js — 入口：UI 路由 + 设备检测 + 引擎联动
 
-let snake = [{ x: 100, y: 100 }];
-let snakeLength = 5;
-let foods = [];
-let score = 0;
-let gameInterval;
-let mousePosition = { x: 100, y: 100 };
-let baseSpeed = 3;
-let speedMultiplier = 0.05; // 每增加一节，速度增加的比例
-const maxFoods = 50;
-const minFoods = 30;
-const foodRadius = 10;
-let headWidth = 20; // 初始蛇头宽度
-const maxHeadWidth = 40; // 最大蛇头宽度
+import { createGame } from './game/engine.js';
+import { createInputController, detectCapabilities } from './game/input.js';
+import { storage } from './game/storage.js';
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const $ = (sel) => document.querySelector(sel);
 
-function startGame() {
-    resetGame();
-    startPanel.style.display = 'none';
-    canvas.style.display = 'block';
-    gameInterval = setInterval(update, 20);
+const els = {
+    menuScreen: $('#menu-screen'),
+    gameScreen: $('#game-screen'),
+    pauseOverlay: $('#pause-overlay'),
+    overOverlay: $('#over-overlay'),
+    menuBest: $('#menu-best'),
+    hudScore: $('#hud-score'),
+    hudLength: $('#hud-length'),
+    hudBest: $('#hud-best'),
+    buffBar: $('#buff-bar'),
+    canvas: $('#game-canvas'),
+    dpad: $('#dpad'),
+    btnStart: $('#btn-start'),
+    btnPause: $('#btn-pause'),
+    btnResume: $('#btn-resume'),
+    btnPauseHome: $('#btn-pause-home'),
+    btnRestart: $('#btn-restart'),
+    btnHome: $('#btn-home'),
+    overEmoji: $('#over-emoji'),
+    overTitle: $('#over-title'),
+    overSub: $('#over-sub'),
+    overScore: $('#over-score'),
+    overLength: $('#over-length'),
+    overBest: $('#over-best'),
+};
+
+// 启动时显示最高分
+els.menuBest.textContent = storage.getBestScore();
+els.hudBest.textContent = storage.getBestScore();
+
+// 设备检测：决定是否显示 D-Pad
+const caps = detectCapabilities();
+if (caps.preferDPad) {
+    document.body.classList.add('show-dpad');
 }
 
-function resetGame() {
-    snake = [{ x: canvas.width / 2, y: canvas.height / 2 }];
-    snakeLength = 5;
-    score = 0;
-    foods = [];
-    scoreElement.textContent = score;
-    generateFood();
-}
-
-function update() {
-    updateSnakePosition();
-    checkFoodCollisions();
-    manageFoodLifeCycle();
-    draw();
-}
-
-function updateSnakePosition() {
-    const head = snake[0];
-    const dx = mousePosition.x - head.x;
-    const dy = mousePosition.y - head.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const speed = baseSpeed + (snakeLength - 5) * speedMultiplier; // 随着蛇的长度增加速度
-
-    if (distance > speed) {
-        const angle = Math.atan2(dy, dx);
-        const newHead = {
-            x: head.x + Math.cos(angle) * speed,
-            y: head.y + Math.sin(angle) * speed,
-        };
-        snake.unshift(newHead);
-    }
-
-    if (snake.length > snakeLength) {
-        snake.pop();
-    }
-
-    // 随着蛇的成长，蛇头逐渐变宽
-    headWidth = Math.min(maxHeadWidth, 20 + (snakeLength - 5) * 2);
-}
-
-function generateFood() {
-    if (foods.length < minFoods) {
-        const foodType = randomFoodType();
-        const food = createFood(foodType);
-        foods.push(food);
-    }
-}
-
-function createFood(foodType) {
-    return {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        type: foodType.type,
-        color: foodType.color,
-        radius: foodRadius,
-        lifetime: foodType.lifetime,
-        opacity: 1,
-    };
-}
-
-function randomFoodType() {
-    const r = Math.random();
-    if (r < 0.6) {
-        return { type: 'red', color: 'red', lifetime: 30000 }; // 红色食物30秒
-    } else if (r < 0.9) {
-        return { type: 'yellow', color: 'yellow', lifetime: 30000 }; // 黄色食物30秒
-    } else if (r < 0.98) {
-        return { type: 'green', color: 'green', lifetime: 30000 }; // 绿色食物30秒
-    } else {
-        return { type: 'super', color: 'rainbow', lifetime: 30000 }; // 超级彩色食物30秒
-    }
-}
-
-function manageFoodLifeCycle() {
-    foods.forEach(food => {
-        food.lifetime -= 20;
-        if (food.lifetime <= 1000) {
-            food.opacity = food.lifetime / 1000;
-        }
-    });
-
-    foods = foods.filter(food => food.lifetime > 0);
-
-    if (foods.length < minFoods) {
-        generateFood();
-    } else if (foods.length > maxFoods) {
-        const randomIndex = Math.floor(Math.random() * foods.length);
-        foods[randomIndex].lifetime = Math.min(foods[randomIndex].lifetime, 1000); // Start fading out
-    }
-}
-
-function checkFoodCollisions() {
-    const head = snake[0];
-
-    foods = foods.filter(food => {
-        const distance = Math.sqrt((head.x - food.x) ** 2 + (head.y - food.y) ** 2);
-        if (distance < food.radius + headWidth / 2) { // 蛇头面积增加后更新碰撞检测
-            handleFoodCollision(food);
-            return false;
-        }
-        return true;
-    });
-}
-
-function handleFoodCollision(food) {
-    switch (food.type) {
-        case 'red':
-            score++;
-            snakeLength += 1;
-            break;
-        case 'yellow':
-            score += 2;
-            snakeLength += 2;
-            break;
-        case 'green':
-            score -= 3;
-            snakeLength = Math.max(5, snakeLength - 3);
-            break;
-        case 'super':
-            score += 10;
-            snakeLength += 10;
-            break;
-    }
-    scoreElement.textContent = score;
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    foods.forEach(food => {
-        ctx.fillStyle = food.color === 'rainbow' ? getRainbowColor() : food.color;
-        ctx.globalAlpha = food.opacity;
-        ctx.beginPath();
-        ctx.arc(food.x, food.y, food.radius, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    });
-
-    ctx.strokeStyle = 'lime';
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = headWidth; // 根据当前蛇头宽度绘制
-    ctx.beginPath();
-    ctx.moveTo(snake[0].x, snake[0].y);
-    for (let i = 1; i < snake.length; i++) {
-        ctx.lineTo(snake[i].x, snake[i].y);
-    }
-    ctx.stroke();
-}
-
-function getRainbowColor() {
-    const time = Date.now() * 0.001;
-    const r = Math.sin(time * 2) * 127 + 128;
-    const g = Math.sin(time * 2 + 2) * 127 + 128;
-    const b = Math.sin(time * 2 + 4) * 127 + 128;
-    return `rgb(${r},${g},${b})`;
-}
-
-window.addEventListener('mousemove', (e) => {
-    mousePosition.x = e.clientX;
-    mousePosition.y = e.clientY;
+// 游戏引擎
+const game = createGame({
+    canvas: els.canvas,
+    callbacks: {
+        onBestScore: () => storage.getBestScore(),
+        stateChange: (s) => {
+            // 状态变化时的 UI 同步
+            if (s === 'menu') showMenu();
+            if (s === 'playing') hideOverlays();
+            if (s === 'paused') showPause();
+        },
+        scoreChange: ({ score, length }) => {
+            els.hudScore.textContent = score;
+            els.hudLength.textContent = length;
+        },
+        bestChange: (best) => {
+            els.hudBest.textContent = best;
+            els.menuBest.textContent = best;
+        },
+        buffChange: (list) => renderBuffs(list),
+        tick: ({ buffs }) => renderBuffs(buffs),
+        gameOver: ({ score, length, isNewBest, bestScore }) => {
+            // 写入最高分
+            const newBest = storage.setBestScore(score);
+            els.overScore.textContent = score;
+            els.overLength.textContent = length;
+            els.overBest.textContent = newBest;
+            if (isNewBest) {
+                els.overEmoji.textContent = '🎉';
+                els.overTitle.textContent = '新纪录！';
+                els.overSub.textContent = '太厉害啦，破纪录了 ✨';
+            } else if (score >= 100) {
+                els.overEmoji.textContent = '🌟';
+                els.overTitle.textContent = '完成出色';
+                els.overSub.textContent = '继续保持手感～';
+            } else if (score >= 30) {
+                els.overEmoji.textContent = '🌸';
+                els.overTitle.textContent = '不错的开始';
+                els.overSub.textContent = '再来一局，挑战更高分';
+            } else {
+                els.overEmoji.textContent = '🌱';
+                els.overTitle.textContent = '游戏结束';
+                els.overSub.textContent = '慢慢来，享受每一口';
+            }
+            setTimeout(() => {
+                els.overOverlay.hidden = false;
+            }, 700);
+        },
+    },
 });
 
-startBtn.addEventListener('click', startGame);
-
-window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+const input = createInputController({
+    onDirection: (dir) => game.setDirection(dir),
+    onPause: () => {
+        if (game.getState() === 'playing' || game.getState() === 'paused') {
+            game.togglePause();
+        }
+    },
 });
+
+// 启动游戏循环
+game.start();
+// 首帧时调整画布大小
+requestAnimationFrame(() => game.resize());
+
+// 视图切换
+function showMenu() {
+    els.menuScreen.hidden = false;
+    els.gameScreen.hidden = true;
+    input.setActive(false);
+}
+
+function showGame() {
+    els.menuScreen.hidden = true;
+    els.gameScreen.hidden = false;
+    input.setActive(true);
+    // 等布局完成再 resize
+    requestAnimationFrame(() => game.resize());
+}
+
+function showPause() {
+    els.pauseOverlay.hidden = false;
+}
+
+function hideOverlays() {
+    els.pauseOverlay.hidden = true;
+    els.overOverlay.hidden = true;
+}
+
+// 按钮绑定
+els.btnStart.addEventListener('click', () => {
+    showGame();
+    game.startNewGame();
+});
+
+els.btnPause.addEventListener('click', () => {
+    game.togglePause();
+});
+
+els.btnResume.addEventListener('click', () => {
+    game.togglePause();
+});
+
+els.btnPauseHome.addEventListener('click', () => {
+    game.togglePause(); // 确保解除暂停
+    game.stop();
+    // 重启游戏循环
+    game.start();
+    showMenu();
+});
+
+els.btnRestart.addEventListener('click', () => {
+    els.overOverlay.hidden = true;
+    game.startNewGame();
+});
+
+els.btnHome.addEventListener('click', () => {
+    game.stop();
+    game.start();
+    showMenu();
+});
+
+// 自适应
+let resizeTimer = 0;
+function handleResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        game.resize();
+    }, 100);
+}
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+    setTimeout(handleResize, 200);
+});
+
+// Buff 渲染（避免每帧重建 DOM）
+let lastBuffsKey = '';
+function renderBuffs(list) {
+    if (!list || list.length === 0) {
+        if (lastBuffsKey !== '') {
+            els.buffBar.innerHTML = '';
+            lastBuffsKey = '';
+        }
+        return;
+    }
+    const key = list.map(b => `${b.type}:${Math.ceil(b.remain / 1000)}`).join('|');
+    if (key === lastBuffsKey) return;
+    lastBuffsKey = key;
+    els.buffBar.innerHTML = list.map(b => {
+        const meta = buffMeta(b.type);
+        const remain = Math.ceil(b.remain / 1000);
+        return `<span class="buff-chip" style="color:${meta.color}">
+            <span class="buff-chip-dot" style="background:${meta.color}"></span>
+            ${meta.label} ${remain}s
+        </span>`;
+    }).join('');
+}
+
+function buffMeta(type) {
+    if (type === 'speed') return { label: '⚡ 加速', color: '#E8A33D' };
+    if (type === 'slow')  return { label: '🫧 慢动作', color: '#8B7FD8' };
+    return { label: type, color: '#5C5C77' };
+}
+
+// 防止页面整体滚动 / 缩放
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
+    document.addEventListener(ev, e => e.preventDefault());
+});
+document.addEventListener('dblclick', e => e.preventDefault());
+
+// 默认显示菜单
+showMenu();

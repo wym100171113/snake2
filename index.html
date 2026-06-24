@@ -1,20 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FFF4F0">
+    <meta name="description" content="蛇来运转 · 一款柔和治愈风的网页贪吃蛇游戏">
+    <title>蛇来运转 · 治愈贪吃蛇</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <div id="start-panel">
-            <h1>Snake Game</h1>
-            <button id="start-btn">Start Game</button>
-        </div>
-        <canvas id="game-canvas"></canvas>
-        <div id="score-panel">Score: <span id="score">0</span></div>
+    <!-- 背景装饰层：模糊光斑 -->
+    <div class="bg-blobs" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
     </div>
-    <script src="script.js"></script>
+
+    <!-- 主菜单页 -->
+    <section id="menu-screen" class="screen screen-menu" aria-label="主菜单">
+        <div class="menu-card">
+            <div class="menu-emoji" aria-hidden="true">🐍</div>
+            <h1 class="menu-title">蛇来运转</h1>
+            <p class="menu-slogan">一口一口，温柔吃掉坏心情</p>
+
+            <div class="best-score-card">
+                <span class="best-label">历史最高</span>
+                <span class="best-value" id="menu-best">0</span>
+                <span class="best-trophy" aria-hidden="true">🏆</span>
+            </div>
+
+            <button class="btn-primary" id="btn-start" type="button">
+                <span>开始游戏</span>
+                <span class="btn-arrow" aria-hidden="true">→</span>
+            </button>
+
+            <div class="control-hints" id="control-hints">
+                <div class="hint-card">
+                    <span class="hint-icon" aria-hidden="true">⌨️</span>
+                    <span class="hint-text">方向键 / WASD</span>
+                </div>
+                <div class="hint-card">
+                    <span class="hint-icon" aria-hidden="true">👆</span>
+                    <span class="hint-text">滑动屏幕</span>
+                </div>
+                <div class="hint-card">
+                    <span class="hint-icon" aria-hidden="true">🕹️</span>
+                    <span class="hint-text">虚拟方向键</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 游戏页 -->
+    <section id="game-screen" class="screen screen-game" aria-label="游戏中" hidden>
+        <!-- 顶部 HUD -->
+        <header class="hud">
+            <div class="hud-pill">
+                <span class="hud-label">得分</span>
+                <span class="hud-value" id="hud-score">0</span>
+            </div>
+            <div class="hud-pill">
+                <span class="hud-label">长度</span>
+                <span class="hud-value" id="hud-length">3</span>
+            </div>
+            <div class="hud-pill hud-best">
+                <span class="hud-label">最高</span>
+                <span class="hud-value" id="hud-best">0</span>
+            </div>
+            <button class="hud-btn" id="btn-pause" type="button" aria-label="暂停">
+                <span aria-hidden="true">⏸</span>
+            </button>
+        </header>
+
+        <!-- Buff 状态条 -->
+        <div class="buff-bar" id="buff-bar" aria-live="polite"></div>
+
+        <!-- 游戏画布 -->
+        <div class="canvas-wrap">
+            <canvas id="game-canvas" aria-label="游戏画布"></canvas>
+        </div>
+
+        <!-- 浮动方向键（默认触屏可见） -->
+        <div class="dpad" id="dpad" aria-label="虚拟方向键">
+            <button class="dpad-btn dpad-up" data-dir="up" type="button" aria-label="向上">▲</button>
+            <button class="dpad-btn dpad-left" data-dir="left" type="button" aria-label="向左">◀</button>
+            <button class="dpad-btn dpad-right" data-dir="right" type="button" aria-label="向右">▶</button>
+            <button class="dpad-btn dpad-down" data-dir="down" type="button" aria-label="向下">▼</button>
+            <span class="dpad-center" aria-hidden="true">🐍</span>
+        </div>
+    </section>
+
+    <!-- 暂停遮罩 -->
+    <div class="overlay" id="pause-overlay" hidden>
+        <div class="overlay-card">
+            <div class="overlay-emoji" aria-hidden="true">☁️</div>
+            <h2>休息一下</h2>
+            <p>别着急，深呼吸再继续</p>
+            <button class="btn-primary" id="btn-resume" type="button">继续游戏</button>
+            <button class="btn-ghost" id="btn-pause-home" type="button">返回菜单</button>
+        </div>
+    </div>
+
+    <!-- 结束弹窗 -->
+    <div class="overlay" id="over-overlay" hidden>
+        <div class="overlay-card overlay-result">
+            <div class="overlay-emoji" id="over-emoji" aria-hidden="true">🌸</div>
+            <h2 id="over-title">游戏结束</h2>
+            <p class="over-sub" id="over-sub">这一局也很棒啦</p>
+            <div class="result-grid">
+                <div class="result-item">
+                    <span class="result-label">本局得分</span>
+                    <span class="result-value" id="over-score">0</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">蛇身长度</span>
+                    <span class="result-value" id="over-length">0</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">历史最高</span>
+                    <span class="result-value" id="over-best">0</span>
+                </div>
+            </div>
+            <button class="btn-primary" id="btn-restart" type="button">再来一局</button>
+            <button class="btn-ghost" id="btn-home" type="button">返回菜单</button>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
