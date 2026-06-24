@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#FFF4F0">
-    <meta name="description" content="蛇来运转 · 一款治愈系网页贪吃蛇——360° 自由移动，10 种道具，5 套主题风格，连击加分，超级大奖，随时随地开箱即玩的手感小游戏">
+    <meta name="description" content="蛇来运转 · 一款治愈系网页贪吃蛇——360° 自由移动，16 种道具，9 款蛇皮肤，22 项成就，5 套主题风格，连击加分，超级大奖，随时随地开箱即玩的手感小游戏">
     <meta name="keywords" content="贪吃蛇, 网页游戏, 治愈, 休闲, HTML5, 手机, 电脑, 免费, 单机">
     <meta property="og:title" content="蛇来运转 · 治愈贪吃蛇">
-    <meta property="og:description" content="360° 自由移动，10 种道具，5 套主题，连击加分，超级大奖——一款让你停不下来的治愈系贪吃蛇">
+    <meta property="og:description" content="360° 自由移动，16 种道具，9 款皮肤，22 项成就，5 套主题——一款让你停不下来的治愈系贪吃蛇">
     <meta property="og:type" content="website">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
@@ -80,10 +80,23 @@
                 </div>
             </div>
 
-            <!-- 音效开关 -->
-            <button class="btn-icon" id="btn-sound" type="button" title="音效">
-                <span id="sound-icon">🔊</span>
-            </button>
+            <!-- 蛇皮肤选择器 -->
+            <div class="theme-selector">
+                <span class="theme-label">蛇皮肤</span>
+                <div class="skin-options" id="skin-options">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 成就查看按钮 + 音效 -->
+            <div class="menu-row">
+                <button class="btn-icon" id="btn-achievements" type="button" title="成就">
+                    <span>🏆</span>
+                </button>
+                <button class="btn-icon" id="btn-sound" type="button" title="音效">
+                    <span id="sound-icon">🔊</span>
+                </button>
+            </div>
 
             <div class="control-hints" id="control-hints">
                 <div class="hint-card">
@@ -96,7 +109,7 @@
                 </div>
                 <div class="hint-card">
                     <span class="hint-icon" aria-hidden="true">🌸</span>
-                    <span class="hint-text">10 种道具 · 连击 · 大奖</span>
+                    <span class="hint-text">16 种道具 · 连击 · 大奖</span>
                 </div>
             </div>
         </div>
@@ -193,5 +206,18 @@
     </div>
 
     <script type="module" src="script.js"></script>
+
+    <!-- 成就查看面板 -->
+    <div class="overlay" id="achievement-panel" hidden>
+        <div class="overlay-card overlay-ach">
+            <div class="ach-panel-header">
+                <h2 id="ach-panel-title">成就收藏</h2>
+                <button class="hud-btn" id="btn-ach-close" type="button" aria-label="关闭">✕</button>
+            </div>
+            <div class="ach-panel-list" id="ach-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>

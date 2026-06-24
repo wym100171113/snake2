@@ -1,14 +1,70 @@
 // renderer.js — 2D 自由移动蛇的 Canvas 2D 渲染
 // 蛇身：圆角胶囊体，沿 segment 列表用粗线条 + 圆形头尾绘制
+// 支持皮肤系统
 
-const COLORS = {
-    bgInner: '#FFFAF5',
-    bgOuter: '#E8F4FF',
-    snakeBody: '#A8E6CF',
-    snakeHead: '#56C596',
-    snakeTail: '#D4F4E2',
-    snakeOutline: 'rgba(86, 197, 150, 0.25)',
-    wall: '#FFB5A7',
+// 默认皮肤
+const DEFAULT_SKIN = {
+    name: '经典绿',
+    body: '#A8E6CF', headHi: '#7FD7AC', headLo: '#3FA67A',
+    scaleHi: '#C7F0DB', scaleLo: '#9CDFC0', shadow: 'rgba(168, 230, 207, 0.18)',
+    outline: 'rgba(63, 166, 122, 0.3)',
+};
+
+// 所有可用皮肤
+export const SNAKE_SKINS = {
+    classic: {
+        ...DEFAULT_SKIN,
+        name: '经典绿', icon: '🐍', unlock: 0,
+    },
+    ocean: {
+        name: '海洋蓝', icon: '🌊',
+        body: '#81D4FA', headHi: '#4FC3F7', headLo: '#0288D1',
+        scaleHi: '#B3E5FC', scaleLo: '#81D4FA', shadow: 'rgba(129, 212, 250, 0.18)',
+        outline: 'rgba(2, 136, 209, 0.3)', unlock: 2,
+    },
+    sunset: {
+        name: '日落橙', icon: '🌅',
+        body: '#FFCC80', headHi: '#FFB74D', headLo: '#F57C00',
+        scaleHi: '#FFE0B2', scaleLo: '#FFCC80', shadow: 'rgba(255, 204, 128, 0.18)',
+        outline: 'rgba(245, 124, 0, 0.3)', unlock: 4,
+    },
+    forest: {
+        name: '深林绿', icon: '🌲',
+        body: '#A5D6A7', headHi: '#66BB6A', headLo: '#2E7D32',
+        scaleHi: '#C8E6C9', scaleLo: '#A5D6A7', shadow: 'rgba(165, 214, 167, 0.18)',
+        outline: 'rgba(46, 125, 50, 0.3)', unlock: 6,
+    },
+    galaxy: {
+        name: '银河紫', icon: '🌌',
+        body: '#CE93D8', headHi: '#BA68C8', headLo: '#7B1FA2',
+        scaleHi: '#E1BEE7', scaleLo: '#CE93D8', shadow: 'rgba(206, 147, 216, 0.18)',
+        outline: 'rgba(123, 31, 162, 0.3)', unlock: 8,
+    },
+    fire: {
+        name: '烈焰红', icon: '🔥',
+        body: '#EF9A9A', headHi: '#E57373', headLo: '#C62828',
+        scaleHi: '#FFCDD2', scaleLo: '#EF9A9A', shadow: 'rgba(239, 154, 154, 0.18)',
+        outline: 'rgba(198, 40, 40, 0.3)', unlock: 10,
+    },
+    candy: {
+        name: '糖果粉', icon: '🍬',
+        body: '#F48FB1', headHi: '#F06292', headLo: '#C2185B',
+        scaleHi: '#F8BBD0', scaleLo: '#F48FB1', shadow: 'rgba(244, 143, 177, 0.18)',
+        outline: 'rgba(194, 24, 91, 0.3)', unlock: 12,
+    },
+    golden: {
+        name: '黄金蟒', icon: '👑',
+        body: '#FFE082', headHi: '#FFD54F', headLo: '#F9A825',
+        scaleHi: '#FFF9C4', scaleLo: '#FFE082', shadow: 'rgba(255, 224, 130, 0.18)',
+        outline: 'rgba(249, 168, 37, 0.3)', unlock: 15,
+    },
+    rainbow: {
+        name: '彩虹蛇', icon: '🌈',
+        body: '#80DEEA', headHi: '#4DD0E1',
+        headLo: '#00838F', scaleHi: '#B2EBF2', scaleLo: '#80DEEA',
+        shadow: 'rgba(128, 222, 234, 0.18)', outline: 'rgba(0, 131, 143, 0.3)',
+        unlock: 18,
+    },
 };
 
 let particles = [];
@@ -50,20 +106,17 @@ export function createRenderer(canvas) {
     let bgPatternH = 0;
 
     function buildBackground(w, h) {
-        // 离屏 canvas 画一次渐变 + 漂浮圆点，性能更好
         const off = document.createElement('canvas');
         off.width = w * dpr;
         off.height = h * dpr;
         const c = off.getContext('2d');
         c.setTransform(dpr, 0, 0, dpr, 0, 0);
-        // 底色渐变
         const grd = c.createRadialGradient(w * 0.3, h * 0.2, 0, w * 0.5, h * 0.5, Math.max(w, h));
         grd.addColorStop(0, '#FFFDFB');
         grd.addColorStop(0.5, '#F4FAFF');
         grd.addColorStop(1, '#EAF4FF');
         c.fillStyle = grd;
         c.fillRect(0, 0, w, h);
-        // 柔和斑点
         for (let i = 0; i < 24; i++) {
             const x = Math.random() * w;
             const y = Math.random() * h;
@@ -87,7 +140,6 @@ export function createRenderer(canvas) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         viewW = cssW;
         viewH = cssH;
-        // 活动区域：留出 12px 内边距防止视觉被切
         const pad = 14;
         area = { x: pad, y: pad, width: viewW - pad * 2, height: viewH - pad * 2 };
         bgPattern = buildBackground(viewW, viewH);
@@ -113,7 +165,6 @@ export function createRenderer(canvas) {
             ctx.fillStyle = grd;
             ctx.fillRect(0, 0, viewW, viewH);
         }
-        // 活动区描边
         ctx.save();
         ctx.strokeStyle = 'rgba(168, 230, 207, 0.6)';
         ctx.lineWidth = 2;
@@ -128,7 +179,6 @@ export function createRenderer(canvas) {
         const cy = food.y;
         const baseR = food.radius;
         let pulse = 0;
-        // 过期前 3 秒脉动
         const remain = Math.max(0, food.expiresAt - time) / 1000;
         if (remain < 3 && remain > 0) {
             pulse = Math.sin(time / 80) * 0.18 * (3 - remain) / 3;
@@ -185,8 +235,9 @@ export function createRenderer(canvas) {
         ctx.fillText(food.emoji, cx, cy + 1);
     }
 
-    function drawSnake(snake, time) {
+    function drawSnake(snake, skin, time) {
         if (!snake || !snake.segments || snake.segments.length === 0) return;
+        const sk = skin || DEFAULT_SKIN;
         const segs = snake.segments;
         const r = snake.segmentRadius;
 
@@ -195,49 +246,47 @@ export function createRenderer(canvas) {
         ctx.lineWidth = r * 2 + 2;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.strokeStyle = 'rgba(168, 230, 207, 0.18)';
+        ctx.strokeStyle = sk.shadow;
         ctx.beginPath();
         ctx.moveTo(segs[0].x, segs[0].y);
         for (let i = 1; i < segs.length; i++) ctx.lineTo(segs[i].x, segs[i].y);
         ctx.stroke();
         ctx.restore();
 
-        // 2) 蛇身主线：分段上色（头深尾浅）
+        // 2) 蛇身主线
         ctx.save();
         ctx.lineWidth = r * 2 - 2;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.strokeStyle = COLORS.snakeBody;
+        ctx.strokeStyle = sk.body;
         ctx.beginPath();
         ctx.moveTo(segs[0].x, segs[0].y);
         for (let i = 1; i < segs.length; i++) ctx.lineTo(segs[i].x, segs[i].y);
         ctx.stroke();
         ctx.restore();
 
-        // 3) 沿路径画小圆"鳞片"以增加立体感
+        // 3) 鳞片圆点（使用皮肤色）
         for (let i = 1; i < segs.length; i++) {
-            const a = segs[i - 1];
             const b = segs[i];
             const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
-            grd.addColorStop(0, '#C7F0DB');
-            grd.addColorStop(1, '#9CDFC0');
+            grd.addColorStop(0, sk.scaleHi);
+            grd.addColorStop(1, sk.scaleLo);
             ctx.fillStyle = grd;
             ctx.beginPath();
             ctx.arc(b.x, b.y, r - 1.5, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // 4) 蛇头：单独更深的圆
+        // 4) 蛇头：径向渐变
         const head = segs[0];
         const grd = ctx.createRadialGradient(head.x - r * 0.3, head.y - r * 0.3, 0, head.x, head.y, r);
-        grd.addColorStop(0, '#7FD7AC');
-        grd.addColorStop(1, '#3FA67A');
+        grd.addColorStop(0, sk.headHi);
+        grd.addColorStop(1, sk.headLo);
         ctx.fillStyle = grd;
         ctx.beginPath();
         ctx.arc(head.x, head.y, r, 0, Math.PI * 2);
         ctx.fill();
-        // 描边
-        ctx.strokeStyle = 'rgba(63, 166, 122, 0.3)';
+        ctx.strokeStyle = sk.outline;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -248,23 +297,19 @@ export function createRenderer(canvas) {
     function drawSnakeFace(head, angle, r) {
         const cosA = Math.cos(angle);
         const sinA = Math.sin(angle);
-        // 眼睛垂直于运动方向
         const perpX = -sinA;
         const perpY = cosA;
         const eyeOff = r * 0.5;
         const eyeR = r * 0.32;
         const e1 = { x: head.x + cosA * eyeOff * 0.4 + perpX * eyeOff * 0.7, y: head.y + sinA * eyeOff * 0.4 + perpY * eyeOff * 0.7 };
         const e2 = { x: head.x + cosA * eyeOff * 0.4 - perpX * eyeOff * 0.7, y: head.y + sinA * eyeOff * 0.4 - perpY * eyeOff * 0.7 };
-        // 眼白
         ctx.fillStyle = 'white';
         ctx.beginPath(); ctx.arc(e1.x, e1.y, eyeR, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(e2.x, e2.y, eyeR, 0, Math.PI * 2); ctx.fill();
-        // 瞳孔（朝运动方向偏）
         ctx.fillStyle = '#2F2F4A';
         const pOff = eyeR * 0.35;
         ctx.beginPath(); ctx.arc(e1.x + cosA * pOff, e1.y + sinA * pOff, eyeR * 0.55, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(e2.x + cosA * pOff, e2.y + sinA * pOff, eyeR * 0.55, 0, Math.PI * 2); ctx.fill();
-        // 嘴巴（朝运动方向延伸的小弧线）
         ctx.strokeStyle = 'rgba(47, 47, 74, 0.6)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -292,11 +337,9 @@ export function createRenderer(canvas) {
         ctx.font = 'bold 22px "Quicksand", "Nunito", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        // 描边
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = 3;
         ctx.strokeText(popup.text, popup.x, popup.y);
-        // 填充
         ctx.fillStyle = popup.text === 'JACKPOT!' ? '#FF6B9D' : '#FFB347';
         ctx.fillText(popup.text, popup.x, popup.y);
         ctx.restore();
@@ -313,7 +356,7 @@ export function createRenderer(canvas) {
         clear();
         drawBackground();
         for (const f of (state.foods || [])) drawFood(f, time);
-        if (state.showSnake !== false && state.snake) drawSnake(state.snake, time);
+        if (state.showSnake !== false && state.snake) drawSnake(state.snake, state.skin, time);
         drawParticles();
         drawScorePopup(state.scorePopup);
         drawFlash(state.flashAlpha || 0);

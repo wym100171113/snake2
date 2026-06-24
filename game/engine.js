@@ -7,7 +7,7 @@ import {
     setSpeedFactor,
 } from './snake.js';
 import { maintainFoods, burstSpawn } from './food.js';
-import { createRenderer, updateParticles, spawnParticles } from './renderer.js';
+import { createRenderer, updateParticles, spawnParticles, SNAKE_SKINS } from './renderer.js';
 
 const STATE = {
     MENU: 'menu',
@@ -36,6 +36,7 @@ export function createGame({ canvas, callbacks }) {
     let comboCount = 0;          // 连击计数
     let comboTimer = 0;          // 连击窗口
     let scorePopup = null;       // 临时飘字 { x, y, text, alpha, vy }
+    let currentSkin = SNAKE_SKINS.classic;  // 当前蛇皮肤
 
     function emit(evt, payload) {
         if (callbacks && typeof callbacks[evt] === 'function') {
@@ -212,6 +213,7 @@ export function createGame({ canvas, callbacks }) {
                     jackpot: !!f.jackpot,
                     tier: f.tier || 'common',
                     comboCount,
+                    foodKey: f.key || '',
                 });
                 break;
             }
@@ -259,6 +261,7 @@ export function createGame({ canvas, callbacks }) {
 
         renderer.render({
             snake, foods, flashAlpha, scorePopup,
+            skin: currentSkin,
             showSnake: state === STATE.PLAYING || state === STATE.GAME_OVER || state === STATE.PAUSED,
         }, now);
 
@@ -314,5 +317,7 @@ export function createGame({ canvas, callbacks }) {
         getState: () => state,
         getBestScore: () => bestScore,
         setBestScore: (s) => { bestScore = s; emit('bestChange', bestScore); },
+        setSkin: (key) => { currentSkin = SNAKE_SKINS[key] || SNAKE_SKINS.classic; },
+        getSkin: () => currentSkin,
     };
 }

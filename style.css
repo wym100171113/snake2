@@ -431,12 +431,148 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    align-self: center;
     margin: 0 auto;
     transition: background 0.6s ease, transform 0.2s ease;
 }
 
 .btn-icon:hover { transform: scale(1.08); }
+
+/* ---------- 菜单行（按钮并排） ---------- */
+.menu-row {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+/* ---------- 皮肤选择器 ---------- */
+.skin-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+    max-width: 260px;
+}
+
+.skin-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-card);
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+}
+
+.skin-btn:hover:not(:disabled) { transform: scale(1.12); }
+.skin-btn.active { border-color: var(--color-mint-2); box-shadow: 0 0 0 3px var(--color-btn-glow); }
+.skin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.skin-btn .skin-icon { font-size: 16px; line-height: 1; }
+.skin-btn .skin-name { display: none; }
+.skin-btn .skin-lock {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    font-size: 9px;
+    background: var(--color-card);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    font-weight: 700;
+    color: var(--color-text-soft);
+}
+
+/* ---------- 成就面板 ---------- */
+.overlay-ach {
+    max-width: 420px;
+    max-height: 75vh;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: var(--space-5) var(--space-4);
+}
+
+.ach-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.ach-panel-header h2 {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 22px;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.ach-panel-header .hud-btn {
+    margin: 0;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    background: var(--color-cream);
+    box-shadow: none;
+    transition: background 0.6s ease;
+}
+
+.ach-panel-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-right: var(--space-1);
+}
+
+.ach-panel-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-cream);
+    transition: background 0.6s ease;
+}
+
+.ach-panel-item.locked {
+    opacity: 0.5;
+}
+
+.ach-panel-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.ach-panel-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ach-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.ach-panel-desc {
+    font-size: 11px;
+    color: var(--color-text-soft);
+}
 
 /* ---------- 通用按钮 ---------- */
 .btn-primary,
