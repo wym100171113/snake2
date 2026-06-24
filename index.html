@@ -39,16 +39,16 @@
 
             <div class="control-hints" id="control-hints">
                 <div class="hint-card">
-                    <span class="hint-icon" aria-hidden="true">⌨️</span>
-                    <span class="hint-text">方向键 / WASD</span>
-                </div>
-                <div class="hint-card">
-                    <span class="hint-icon" aria-hidden="true">👆</span>
-                    <span class="hint-text">滑动屏幕</span>
-                </div>
-                <div class="hint-card">
                     <span class="hint-icon" aria-hidden="true">🕹️</span>
-                    <span class="hint-text">虚拟方向键</span>
+                    <span class="hint-text">全方向虚拟遥感</span>
+                </div>
+                <div class="hint-card">
+                    <span class="hint-icon" aria-hidden="true">⌨️</span>
+                    <span class="hint-text">WASD / 方向键 8 向</span>
+                </div>
+                <div class="hint-card">
+                    <span class="hint-icon" aria-hidden="true">🌸</span>
+                    <span class="hint-text">360° 自由移动 + 道具</span>
                 </div>
             </div>
         </div>
@@ -83,13 +83,11 @@
             <canvas id="game-canvas" aria-label="游戏画布"></canvas>
         </div>
 
-        <!-- 浮动方向键（默认触屏可见） -->
-        <div class="dpad" id="dpad" aria-label="虚拟方向键">
-            <button class="dpad-btn dpad-up" data-dir="up" type="button" aria-label="向上">▲</button>
-            <button class="dpad-btn dpad-left" data-dir="left" type="button" aria-label="向左">◀</button>
-            <button class="dpad-btn dpad-right" data-dir="right" type="button" aria-label="向右">▶</button>
-            <button class="dpad-btn dpad-down" data-dir="down" type="button" aria-label="向下">▼</button>
-            <span class="dpad-center" aria-hidden="true">🐍</span>
+        <!-- 浮动虚拟遥感（默认触屏可见） -->
+        <div class="joystick" id="joystick" aria-label="虚拟遥感">
+            <div class="joystick-zone" id="joystick-zone">
+                <div class="joystick-knob" id="joystick-knob"></div>
+            </div>
         </div>
     </section>
 

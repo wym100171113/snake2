@@ -60,8 +60,9 @@ stateDiagram-v2
 ```
 
 ### 4.2 游戏循环
-- 使用 `requestAnimationFrame` 驱动，固定时间步长（`tick = 120ms`，可被 buff 调整）
-- 状态包括：snake 数组（头在前）、direction、pendingDirection（防反向）、foods 数组、score、bestScore、activeBuffs
+- 使用 `requestAnimationFrame` 驱动，按 `dt`（秒）增量更新
+- 蛇为链式跟随：头部按当前 `angle` 方向以 `speed` 像素/秒推进；后续每节向其前节靠近并保持固定 `segmentSpacing` 像素距离
+- 状态包括：snake（segments/angle/targetAngle/speed）、foods 数组、score、bestScore、activeBuffs
 
 ### 4.3 输入适配
 - 键盘：`keydown` 监听 `ArrowUp/Down/Left/Right` 与 `WASD`
@@ -72,10 +73,10 @@ stateDiagram-v2
 
 ### 4.4 渲染流程
 1. 清除画布
-2. 绘制背景（圆角棋盘格 + 漂浮气泡）
+2. 绘制背景（离屏 canvas 预渲染的柔和渐变 + 漂浮斑点 + 虚线活动区边框）
 3. 绘制食物（带光晕与脉动动画）
-4. 绘制蛇身（圆角胶囊，渐变填充，眼睛朝当前方向）
-5. 绘制过场动画（吃到食物的粒子效果、死亡抖动）
+4. 绘制蛇身：粗线阴影 → 圆角主体 → 节间圆形鳞片 → 头部（径向渐变 + 眼睛 + 朝向的微笑）
+5. 绘制过场动画（吃到食物的粒子效果、死亡抖动、白闪）
 
 ### 4.5 道具系统
 - `Food` 类：`{ type, x, y, spawnAt, expiresAt, value, growth, buff }`

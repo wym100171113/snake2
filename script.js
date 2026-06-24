@@ -1,4 +1,4 @@
-// script.js — 入口：UI 路由 + 设备检测 + 引擎联动
+// script.js — 入口：UI 路由 + 设备检测 + 引擎联动（2D 自由移动版）
 
 import { createGame } from './game/engine.js';
 import { createInputController, detectCapabilities } from './game/input.js';
@@ -17,7 +17,7 @@ const els = {
     hudBest: $('#hud-best'),
     buffBar: $('#buff-bar'),
     canvas: $('#game-canvas'),
-    dpad: $('#dpad'),
+    joystick: $('#joystick'),
     btnStart: $('#btn-start'),
     btnPause: $('#btn-pause'),
     btnResume: $('#btn-resume'),
@@ -36,10 +36,10 @@ const els = {
 els.menuBest.textContent = storage.getBestScore();
 els.hudBest.textContent = storage.getBestScore();
 
-// 设备检测：决定是否显示 D-Pad
+// 设备检测：决定是否显示虚拟遥感
 const caps = detectCapabilities();
-if (caps.preferDPad) {
-    document.body.classList.add('show-dpad');
+if (caps.preferJoystick) {
+    document.body.classList.add('show-joystick');
 }
 
 // 游戏引擎
@@ -48,7 +48,6 @@ const game = createGame({
     callbacks: {
         onBestScore: () => storage.getBestScore(),
         stateChange: (s) => {
-            // 状态变化时的 UI 同步
             if (s === 'menu') showMenu();
             if (s === 'playing') hideOverlays();
             if (s === 'paused') showPause();
@@ -64,7 +63,6 @@ const game = createGame({
         buffChange: (list) => renderBuffs(list),
         tick: ({ buffs }) => renderBuffs(buffs),
         gameOver: ({ score, length, isNewBest, bestScore }) => {
-            // 写入最高分
             const newBest = storage.setBestScore(score);
             els.overScore.textContent = score;
             els.overLength.textContent = length;
@@ -94,7 +92,7 @@ const game = createGame({
 });
 
 const input = createInputController({
-    onDirection: (dir) => game.setDirection(dir),
+    onDirection: (dx, dy) => game.setDirection(dx, dy),
     onPause: () => {
         if (game.getState() === 'playing' || game.getState() === 'paused') {
             game.togglePause();
@@ -102,9 +100,7 @@ const input = createInputController({
     },
 });
 
-// 启动游戏循环
 game.start();
-// 首帧时调整画布大小
 requestAnimationFrame(() => game.resize());
 
 // 视图切换
@@ -118,7 +114,6 @@ function showGame() {
     els.menuScreen.hidden = true;
     els.gameScreen.hidden = false;
     input.setActive(true);
-    // 等布局完成再 resize
     requestAnimationFrame(() => game.resize());
 }
 
@@ -146,9 +141,8 @@ els.btnResume.addEventListener('click', () => {
 });
 
 els.btnPauseHome.addEventListener('click', () => {
-    game.togglePause(); // 确保解除暂停
+    game.togglePause();
     game.stop();
-    // 重启游戏循环
     game.start();
     showMenu();
 });

@@ -451,59 +451,81 @@ button {
     touch-action: none;
 }
 
-/* ---------- 虚拟方向键 ---------- */
-.dpad {
+/* ---------- 虚拟遥感 ---------- */
+.joystick {
     position: absolute;
     bottom: max(var(--space-5), env(safe-area-inset-bottom));
-    right: var(--space-5);
-    width: 180px;
-    height: 180px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    gap: 4px;
+    left: var(--space-5);
     z-index: 6;
-    background: var(--color-card-soft);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    padding: 8px;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-soft);
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.dpad.hidden {
+.joystick.hidden {
     opacity: 0;
     transform: scale(0.8);
     pointer-events: none;
 }
 
-.dpad-btn {
-    background: white;
-    border-radius: var(--radius-sm);
-    font-size: 18px;
-    color: var(--color-text);
-    font-weight: 700;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    transition: transform 0.1s ease, background 0.2s ease;
-}
-
-.dpad-btn:active {
-    transform: scale(0.9);
-    background: var(--color-mint-1);
-}
-
-.dpad-up    { grid-area: 1 / 2 / 2 / 3; }
-.dpad-left  { grid-area: 2 / 1 / 3 / 2; }
-.dpad-right { grid-area: 2 / 3 / 3 / 4; }
-.dpad-down  { grid-area: 3 / 2 / 4 / 3; }
-
-.dpad-center {
-    grid-area: 2 / 2 / 3 / 3;
+.joystick-zone {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--color-card-soft);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 2px dashed rgba(86, 197, 150, 0.45);
+    position: relative;
+    box-shadow: var(--shadow-soft);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    cursor: pointer;
+    touch-action: none;
+}
+
+.joystick-zone::before,
+.joystick-zone::after {
+    content: '';
+    position: absolute;
+    background: rgba(86, 197, 150, 0.18);
+}
+
+.joystick-zone::before {
+    width: 1px;
+    height: 30%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.joystick-zone::after {
+    width: 30%;
+    height: 1px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.joystick-knob {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6FD4A6, #56C596);
+    box-shadow: 0 4px 12px rgba(86, 197, 150, 0.45), inset 0 -2px 4px rgba(0, 0, 0, 0.08);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s ease-out;
+    touch-action: none;
+}
+
+.joystick-knob::after {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), rgba(255,255,255,0));
     pointer-events: none;
 }
 
@@ -625,11 +647,17 @@ button {
         height: 36px;
         font-size: 14px;
     }
-    .dpad {
-        width: 150px;
-        height: 150px;
+    .joystick {
         bottom: max(var(--space-3), env(safe-area-inset-bottom));
-        right: var(--space-3);
+        left: var(--space-3);
+    }
+    .joystick-zone {
+        width: 100px;
+        height: 100px;
+    }
+    .joystick-knob {
+        width: 44px;
+        height: 44px;
     }
     .control-hints {
         grid-template-columns: 1fr;
@@ -646,21 +674,23 @@ button {
 }
 
 @media (max-width: 380px) {
-    .dpad {
-        width: 130px;
-        height: 130px;
+    .joystick {
+        bottom: max(var(--space-2), env(safe-area-inset-bottom));
+        left: var(--space-2);
     }
-    .dpad-btn {
-        font-size: 14px;
+    .joystick-zone {
+        width: 88px;
+        height: 88px;
     }
-    .dpad-center {
-        font-size: 18px;
+    .joystick-knob {
+        width: 38px;
+        height: 38px;
     }
 }
 
-/* 桌面端默认隐藏 D-Pad，可由 JS 显式打开 */
+/* 桌面端默认隐藏虚拟遥感（可由 JS 显式打开） */
 @media (hover: hover) and (pointer: fine) {
-    body:not(.show-dpad) .dpad {
+    body:not(.show-joystick) .joystick {
         opacity: 0;
         transform: scale(0.8);
         pointer-events: none;
