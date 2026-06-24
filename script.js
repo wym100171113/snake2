@@ -105,6 +105,7 @@ requestAnimationFrame(() => game.resize());
 
 // 视图切换
 function showMenu() {
+    hideOverlays();
     els.menuScreen.hidden = false;
     els.gameScreen.hidden = true;
     input.setActive(false);

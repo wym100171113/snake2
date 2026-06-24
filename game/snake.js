@@ -87,8 +87,8 @@ export function update(snake, dt) {
     for (let i = 1; i < snake.segments.length; i++) {
         const front = snake.segments[i - 1];
         const back = snake.segments[i];
-        const dx = back.x - front.x;
-        const dy = back.y - front.y;
+        const dx = front.x - back.x;
+        const dy = front.y - back.y;
         const d2 = dx * dx + dy * dy;
         if (d2 > snake.segmentSpacing * snake.segmentSpacing) {
             const d = Math.sqrt(d2);

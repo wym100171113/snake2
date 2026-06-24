@@ -227,6 +227,10 @@ export function createGame({ canvas, callbacks }) {
     function stop() {
         stopFlag = true;
         cancelAnimationFrame(rafId);
+        snake = null;
+        foods = [];
+        buffs.clear();
+        flashAlpha = 0;
     }
 
     function resize() {
