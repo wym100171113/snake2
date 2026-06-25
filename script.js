@@ -19,6 +19,7 @@ const els = {
     statAchievements: $('#stat-achievements'),
     statMaxlen: $('#stat-maxlen'),
     statScore: $('#stat-score'),
+    menuBest: $('#menu-best'),
     hudScore: $('#hud-score'),
     hudLength: $('#hud-length'),
     hudBest: $('#hud-best'),
@@ -62,8 +63,6 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
-    btnLandscape: $('#btn-landscape'),
-    landscapeIcon: $('#landscape-icon'),
 };
 
 // ========== 音效 ==========
@@ -281,10 +280,6 @@ function getBuffDesc(buff) {
 
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
-els.btnLandscape?.addEventListener('click', () => {
-    toggleLandscape();
-    els.landscapeIcon.textContent = isLandscape ? '🔄' : '📱';
-});
 
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
@@ -449,8 +444,8 @@ function refreshItemBtns() {
     });
 }
 
-els.itemBtn0?.addEventListener('click', () => { if (game.useItem(0)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } refreshItemBtns(); } });
-els.itemBtn1?.addEventListener('click', () => { if (game.useItem(1)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } refreshItemBtns(); } });
+els.itemBtn0?.addEventListener('pointerdown', (e) => { e.preventDefault(); if (game.useItem(0)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } } });
+els.itemBtn1?.addEventListener('pointerdown', (e) => { e.preventDefault(); if (game.useItem(1)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } } });
 
 // ========== 皮肤 ==========
 let selectedSkinKey = 'classic';
@@ -485,6 +480,7 @@ function refreshStats() {
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
     els.statScore.textContent = game.getTotalScore();
+    els.menuBest.textContent = storage.getBestScore();
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -537,7 +533,7 @@ const game = createGame({
             if (length >= 100) unlockAchievement('len_100');
             updateMaxLength(length);
         },
-        bestChange: (best) => { els.hudBest.textContent = best; },
+        bestChange: (best) => { els.hudBest.textContent = best; els.menuBest.textContent = best; },
         totalScoreChange: (ts) => { els.statScore.textContent = ts; },
         itemsChange: () => { refreshItemBtns(); refreshItemSlots(); },
         buffChange: (list) => renderBuffs(list),
@@ -662,22 +658,6 @@ function buffMeta(type) {
 
 // ========== 防止滚动 ==========
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
-document.addEventListener('dblclick', e => e.preventDefault());
-
-// ========== 横屏切换 ==========
-let isLandscape = false;
-function toggleLandscape() {
-    isLandscape = !isLandscape;
-    document.body.classList.toggle('landscape', isLandscape);
-    storage.setSetting('landscape', isLandscape);
-    setTimeout(() => game.resize(), 100);
-}
-
-// 初始化横屏状态
-if (storage.getSettings().landscape) {
-    isLandscape = true;
-    document.body.classList.add('landscape');
-}
 
 // ========== 初始化 ==========
 loadAchievements();

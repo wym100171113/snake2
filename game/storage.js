@@ -16,8 +16,8 @@ function read() {
         return {
             bestScore: Number(obj.bestScore) || 0,
             settings: {
-                dpadVisible: !!obj?.settings?.dpadVisible,
-                highContrast: !!obj?.settings?.highContrast,
+                ...memoryFallback.settings,
+                ...(obj?.settings || {}),
             },
         };
     } catch (e) {

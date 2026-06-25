@@ -15,8 +15,8 @@ const STATE = {
     GAME_OVER: 'gameover',
 };
 
-const FOOD_TARGET = 12;
-const BURST_INTERVAL = 10;
+const FOOD_TARGET = 18;
+const BURST_INTERVAL = 6;
 const MAX_LIVES = 3;
 const WORLD_W = 2000;
 const WORLD_H = 2000;
@@ -25,7 +25,7 @@ const WORLD_H = 2000;
 export const ITEMS = {
     invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
     magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 80 } },
-    superSpeed: { name: '极限加速', icon: '⚡', desc: '3秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 3000, factor: 3 } },
+    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
     extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 1000, cooldown: 120, buff: { type: 'life', amount: 1 } },
     invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 400, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
     shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 150, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
@@ -53,7 +53,7 @@ export function createGame({ canvas, callbacks }) {
     let lives = 1;
     let invincibleTimer = 0;
     let magnetTimer = 0;
-    let magnetRadius = 80;
+    let magnetRadius = 120;
     let superSpeedTimer = 0;
     let invisibleTimer = 0;
     let shieldTimer = 0;
