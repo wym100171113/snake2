@@ -54,6 +54,10 @@
                     <span class="stat-label">总局数</span>
                 </div>
                 <div class="stat-item">
+                    <span class="stat-num" id="stat-score">0</span>
+                    <span class="stat-label">积分</span>
+                </div>
+                <div class="stat-item">
                     <span class="stat-num" id="stat-achievements">0</span>
                     <span class="stat-label">成就</span>
                 </div>
@@ -88,13 +92,19 @@
                 </div>
             </div>
 
-            <!-- 成就查看按钮 + 音效 -->
+            <!-- 成就查看按钮 + 音效 + 技能商店 + 音乐 -->
             <div class="menu-row">
                 <button class="btn-icon" id="btn-achievements" type="button" title="成就">
                     <span>🏆</span>
                 </button>
+                <button class="btn-icon" id="btn-shop" type="button" title="技能商店">
+                    <span>🛒</span>
+                </button>
                 <button class="btn-icon" id="btn-sound" type="button" title="音效">
                     <span id="sound-icon">🔊</span>
+                </button>
+                <button class="btn-icon" id="btn-music" type="button" title="音乐">
+                    <span id="music-icon">🎵</span>
                 </button>
             </div>
 
@@ -109,7 +119,7 @@
                 </div>
                 <div class="hint-card">
                     <span class="hint-icon" aria-hidden="true">🌸</span>
-                    <span class="hint-text">16 种道具 · 连击 · 大奖</span>
+                    <span class="hint-text">24 种道具 · 连击 · 技能 · 皮肤</span>
                 </div>
             </div>
         </div>
@@ -142,6 +152,9 @@
 
         <!-- Buff 状态条 -->
         <div class="buff-bar" id="buff-bar" aria-live="polite"></div>
+
+        <!-- 作弊模式提示 -->
+        <div class="cheat-indicator" id="cheat-indicator" hidden>⚡ WYM 作弊模式</div>
 
         <!-- 游戏画布 -->
         <div class="canvas-wrap">
@@ -215,6 +228,20 @@
                 <button class="hud-btn" id="btn-ach-close" type="button" aria-label="关闭">✕</button>
             </div>
             <div class="ach-panel-list" id="ach-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 技能商店面板 -->
+    <div class="overlay" id="skill-shop-panel" hidden>
+        <div class="overlay-card overlay-ach">
+            <div class="ach-panel-header">
+                <h2>技能商店 <span class="shop-score-label">💰<span id="shop-score">0</span></span></h2>
+                <button class="hud-btn" id="btn-shop-close" type="button" aria-label="关闭">✕</button>
+            </div>
+            <p class="shop-hint">游戏中按数字键 <kbd>1</kbd>-<kbd>7</kbd> 使用技能</p>
+            <div class="shop-list" id="shop-list">
                 <!-- 动态生成 -->
             </div>
         </div>

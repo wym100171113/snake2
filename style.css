@@ -423,26 +423,26 @@ button {
 .theme-btn.active { border-color: var(--color-mint-2); box-shadow: 0 0 0 3px var(--color-btn-glow); }
 
 .btn-icon {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--color-cream);
-    font-size: 20px;
+    font-size: 18px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto;
     transition: background 0.6s ease, transform 0.2s ease;
 }
-
 .btn-icon:hover { transform: scale(1.08); }
 
 /* ---------- 菜单行（按钮并排） ---------- */
 .menu-row {
     display: flex;
     justify-content: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
     align-items: center;
+    flex-wrap: wrap;
 }
 
 /* ---------- 皮肤选择器 ---------- */
@@ -572,6 +572,129 @@ button {
 .ach-panel-desc {
     font-size: 11px;
     color: var(--color-text-soft);
+}
+
+/* ---------- 技能商店 ---------- */
+.shop-score-label {
+    font-size: 16px;
+    color: var(--color-text-soft);
+    margin-left: var(--space-2);
+}
+
+.shop-hint {
+    font-size: 12px;
+    color: var(--color-text-soft);
+    text-align: center;
+    margin: 0 0 var(--space-3);
+}
+
+.shop-hint kbd {
+    background: var(--color-card);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid var(--color-mint-1);
+}
+
+.shop-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-right: var(--space-1);
+}
+
+.shop-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-cream);
+    transition: background 0.6s ease;
+}
+
+.shop-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.shop-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.shop-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.shop-desc {
+    font-size: 11px;
+    color: var(--color-text-soft);
+}
+
+.shop-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+
+.shop-count {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-mint-2);
+    min-width: 24px;
+    text-align: center;
+}
+
+.shop-cd {
+    font-size: 11px;
+    color: #E57373;
+    font-weight: 700;
+}
+
+.shop-buy-btn {
+    background: var(--color-mint-1);
+    color: var(--color-text);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border: none;
+    white-space: nowrap;
+}
+
+.shop-buy-btn:hover:not(:disabled) { background: var(--color-mint-2); }
+.shop-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------- 作弊模式提示 ---------- */
+.cheat-indicator {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 152, 0, 0.9);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 20px;
+    z-index: 20;
+    pointer-events: none;
+    animation: cheatPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cheatPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 /* ---------- 通用按钮 ---------- */

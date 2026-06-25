@@ -167,6 +167,16 @@ export function eats(snake, food) {
 }
 
 /**
+ * 缩小蛇身：从尾部移除 amount 节，最少保留 3 节
+ */
+export function shrink(snake, amount = 3) {
+    const minLen = 3;
+    if (snake.segments.length <= minLen) return;
+    const remove = Math.min(amount, snake.segments.length - minLen);
+    snake.segments.splice(snake.segments.length - remove, remove);
+}
+
+/**
  * 应用速度倍率（buff 触发 / 解除时调用）
  */
 export function setSpeedFactor(snake, factor) {

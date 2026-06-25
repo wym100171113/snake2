@@ -1,6 +1,6 @@
-// script.js — 入口：UI 路由 + 设备检测 + 主题切换 + 成就 + 皮肤 + 音效 + 计时
+// script.js — 入口：UI 路由 + 设备检测 + 主题 + 成就 + 皮肤 + 音效 + 音乐 + 作弊 + 技能商店
 
-import { createGame } from './game/engine.js';
+import { createGame, SKILLS } from './game/engine.js';
 import { createInputController, detectCapabilities } from './game/input.js';
 import { storage } from './game/storage.js';
 import { SNAKE_SKINS } from './game/renderer.js';
@@ -13,11 +13,12 @@ const els = {
     pauseOverlay: $('#pause-overlay'),
     overOverlay: $('#over-overlay'),
     achPanel: $('#achievement-panel'),
+    shopPanel: $('#skill-shop-panel'),
     menuBest: $('#menu-best'),
-    menuStats: $('#menu-stats'),
     statGames: $('#stat-games'),
     statAchievements: $('#stat-achievements'),
     statMaxlen: $('#stat-maxlen'),
+    statScore: $('#stat-score'),
     hudScore: $('#hud-score'),
     hudLength: $('#hud-length'),
     hudBest: $('#hud-best'),
@@ -33,6 +34,10 @@ const els = {
     btnHome: $('#btn-home'),
     btnAch: $('#btn-achievements'),
     btnAchClose: $('#btn-ach-close'),
+    btnShop: $('#btn-shop'),
+    btnShopClose: $('#btn-shop-close'),
+    shopList: $('#shop-list'),
+    shopScore: $('#shop-score'),
     achList: $('#ach-list'),
     overEmoji: $('#over-emoji'),
     overTitle: $('#over-title'),
@@ -46,13 +51,18 @@ const els = {
     achTitle: $('#ach-title'),
     achDesc: $('#ach-desc'),
     soundIcon: $('#sound-icon'),
+    musicIcon: $('#music-icon'),
     themeButtons: document.querySelectorAll('.theme-btn'),
     skinOptions: $('#skin-options'),
+    cheatIndicator: $('#cheat-indicator'),
 };
 
 // ========== 音效系统 ==========
 let audioCtx = null;
 let soundEnabled = true;
+let musicEnabled = true;
+let musicInterval = 0;
+let musicNotes = [];
 
 function getAudioCtx() {
     if (!audioCtx) {
@@ -84,11 +94,50 @@ function sfxJackpot() { playTone(1320, 0.2, 'sine', 0.1); playTone(1760, 0.15, '
 function sfxDie()     { playTone(200, 0.3, 'sawtooth', 0.06); playTone(150, 0.4, 'sawtooth', 0.05); }
 function sfxUnlock()  { playTone(660, 0.08, 'sine', 0.05); playTone(880, 0.08, 'sine', 0.05); playTone(1100, 0.1, 'sine', 0.06); }
 
-// ========== 主题系统 ==========
-let currentTheme = 'heal';
+// ========== 音乐系统（程序化生成） ==========
+const MENU_MELODY = [262, 330, 392, 330, 294, 349, 440, 349, 330, 294, 262, 330];
+const GAME_MELODY = [392, 440, 494, 523, 494, 440, 392, 349, 330, 349, 392, 440, 494, 523, 587, 523];
 
+function startMusic() {
+    if (!musicEnabled) return;
+    stopMusic();
+    const state = game.getState();
+    const melody = state === 'playing' ? GAME_MELODY : MENU_MELODY;
+    let idx = 0;
+    musicInterval = setInterval(() => {
+        if (!musicEnabled) { stopMusic(); return; }
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const freq = melody[idx % melody.length];
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+        idx++;
+    }, 500);
+}
+
+function stopMusic() {
+    clearInterval(musicInterval);
+    musicInterval = 0;
+}
+
+function toggleMusic() {
+    musicEnabled = !musicEnabled;
+    els.musicIcon.textContent = musicEnabled ? '🎵' : '🔇';
+    storage.setSetting('music', musicEnabled);
+    if (musicEnabled) startMusic();
+    else stopMusic();
+}
+
+// ========== 主题系统 ==========
 function applyTheme(name) {
-    currentTheme = name;
     document.documentElement.className = `theme-${name}`;
     storage.setSetting('theme', name);
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -100,45 +149,80 @@ function applyTheme(name) {
 }
 
 function initTheme() {
-    const saved = storage.getSettings().theme || 'heal';
-    applyTheme(saved);
+    applyTheme(storage.getSettings().theme || 'heal');
 }
 
 els.themeButtons.forEach(btn => {
     btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
 });
 
-// 音效开关
-const btnSound = $('#btn-sound');
-btnSound.addEventListener('click', () => {
+// 音效/音乐开关
+$('#btn-sound').addEventListener('click', () => {
     soundEnabled = !soundEnabled;
     els.soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
     storage.setSetting('sound', soundEnabled);
     if (soundEnabled) playTone(440, 0.05, 'sine', 0.04);
 });
 
+$('#btn-music').addEventListener('click', toggleMusic);
+
 if (storage.getSettings().sound === false) {
     soundEnabled = false;
     els.soundIcon.textContent = '🔇';
 }
+if (storage.getSettings().music === false) {
+    musicEnabled = false;
+    els.musicIcon.textContent = '🔇';
+}
 
-// ========== 成就系统（22 项，难度略微提高） ==========
+// ========== 作弊模式 ==========
+let cheatKeys = [];
+let cheatTimer = 0;
+const CHEAT_SEQ = ['w', 'y', 'm'];
+let cheatActive = false;
+
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const k = e.key.toLowerCase();
+    if (k === CHEAT_SEQ[cheatKeys.length]) {
+        cheatKeys.push(k);
+        clearTimeout(cheatTimer);
+        cheatTimer = setTimeout(() => { cheatKeys = []; }, 2000);
+        if (cheatKeys.length === CHEAT_SEQ.length) {
+            cheatKeys = [];
+            cheatActive = !cheatActive;
+            game.setCheatMode(cheatActive);
+            if (cheatActive) {
+                els.cheatIndicator.hidden = false;
+                playTone(880, 0.1, 'sine', 0.06);
+                setTimeout(() => playTone(1100, 0.1, 'sine', 0.06), 120);
+                setTimeout(() => playTone(1320, 0.15, 'sine', 0.08), 250);
+            } else {
+                els.cheatIndicator.hidden = true;
+                playTone(440, 0.1, 'sine', 0.04);
+            }
+        }
+    }
+});
+
+// ========== 成就系统 ==========
 const ACHIEVEMENTS = [
     // 基础
     { id: 'first_game',   icon: '🎮', title: '初次尝试', desc: '完成第一局游戏' },
-    // 得分（门槛提高）
+    // 得分
     { id: 'score_80',     icon: '🌱', title: '小有进步', desc: '单局得分达到 80' },
     { id: 'score_150',    icon: '🌟', title: '百尺竿头', desc: '单局得分达到 150' },
     { id: 'score_300',    icon: '🦄', title: '传说降临', desc: '单局得分达到 300' },
     { id: 'score_750',    icon: '👑', title: '蛇王加冕', desc: '单局得分达到 750' },
     { id: 'score_1500',   icon: '🏆', title: '不朽传奇', desc: '单局得分达到 1500' },
-    // 连击（门槛提高）
+    // 连击
     { id: 'combo_6',      icon: '🔥', title: '连击大师', desc: '达成 6 连击' },
     { id: 'combo_12',     icon: '💥', title: '无双连击', desc: '达成 12 连击' },
     { id: 'combo_20',     icon: '⚡', title: '终极连击', desc: '达成 20 连击' },
     // 大奖
     { id: 'eat_jackpot',   icon: '💎', title: '遇见独角兽', desc: '吃到超级大奖' },
     { id: 'eat_phoenix',   icon: '🔥', title: '凤凰涅槃', desc: '吃到凤凰' },
+    { id: 'eat_heart',     icon: '💖', title: '生命之心', desc: '吃到生命之心' },
     { id: 'eat_both_jp',   icon: '🌈', title: '双重大奖', desc: '同一局吃到独角兽和凤凰' },
     // 长度
     { id: 'len_25',       icon: '🐍', title: '小蛇初长', desc: '蛇身长度达到 25' },
@@ -154,18 +238,27 @@ const ACHIEVEMENTS = [
     { id: 'taste_common', icon: '🍓', title: '美食家', desc: '吃到过所有常见品质食物' },
     { id: 'taste_legend', icon: '🍀', title: '珍馐猎人', desc: '吃到过所有传奇品质食物' },
     { id: 'taste_jackpot',icon: '🦄', title: '大奖猎人', desc: '吃到过所有超级大奖食物' },
+    // 技能
+    { id: 'buy_skill',    icon: '🛒', title: '技能学徒', desc: '首次购买技能' },
+    { id: 'use_skill',    icon: '✨', title: '技能上手', desc: '首次使用技能' },
+    // 新效果
+    { id: 'use_shield',   icon: '🔰', title: '护盾守护', desc: '挡住一次致命碰撞' },
+    { id: 'use_shrink',   icon: '📏', title: '瘦身达人', desc: '吃到瘦身食物' },
+    { id: 'get_life',     icon: '💖', title: '多一条命', desc: '获得额外生命' },
 ];
 
 let unlockedAchievements = [];
 let achievementQueue = [];
 let showingAchievement = false;
-// 单局追踪：已吃到的食物 key
 let eatenThisGame = new Set();
+let shieldUsed = false;
+let shrinkUsed = false;
+let lifeUsed = false;
+let skillBought = false;
+let skillUsed = false;
 
 function loadAchievements() {
-    try {
-        unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]');
-    } catch (e) { unlockedAchievements = []; }
+    try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
 }
 
 function unlockAchievement(id) {
@@ -213,7 +306,6 @@ function renderAchievementPanel() {
             </div>
         </div>`;
     }).join('');
-    // 更新标题
     const titleEl = $('#ach-panel-title');
     if (titleEl) titleEl.textContent = `成就收藏 (${count}/${total})`;
 }
@@ -222,9 +314,65 @@ els.btnAch.addEventListener('click', () => {
     renderAchievementPanel();
     els.achPanel.hidden = false;
 });
+els.btnAchClose.addEventListener('click', () => { els.achPanel.hidden = true; });
 
-els.btnAchClose.addEventListener('click', () => {
-    els.achPanel.hidden = true;
+// ========== 技能商店 ==========
+function renderSkillShop() {
+    if (!els.shopList) return;
+    const totalScore = game.getTotalScore();
+    els.shopScore.textContent = totalScore;
+    const owned = game.getOwnedSkills();
+    els.shopList.innerHTML = Object.entries(SKILLS).map(([id, skill]) => {
+        const o = owned[id] || { count: 0, cooldownRemain: 0 };
+        const cooldownSec = o.cooldownRemain > 0 ? Math.ceil(o.cooldownRemain) : 0;
+        const canBuy = totalScore >= skill.cost;
+        return `<div class="shop-item">
+            <span class="shop-icon">${skill.icon}</span>
+            <div class="shop-text">
+                <span class="shop-name">${skill.name}</span>
+                <span class="shop-desc">${skill.desc} · CD ${skill.cooldown}s</span>
+            </div>
+            <div class="shop-right">
+                <span class="shop-count">x${o.count}</span>
+                ${cooldownSec > 0 ? `<span class="shop-cd">${cooldownSec}s</span>` : ''}
+                <button class="shop-buy-btn" data-skill="${id}" ${canBuy ? '' : 'disabled'}>
+                    💰${skill.cost}
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+    els.shopList.querySelectorAll('.shop-buy-btn').forEach(btn => {
+        btn.addEventListener('click', () => buySkill(btn.dataset.skill));
+    });
+}
+
+function buySkill(id) {
+    if (game.buySkill(id)) {
+        if (!skillBought) { skillBought = true; unlockAchievement('buy_skill'); }
+        renderSkillShop();
+        refreshStats();
+    }
+}
+
+els.btnShop.addEventListener('click', () => {
+    renderSkillShop();
+    els.shopPanel.hidden = false;
+});
+els.btnShopClose.addEventListener('click', () => { els.shopPanel.hidden = true; });
+
+// 游戏中使用技能：数字键 1-7
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const skillKeys = ['1', '2', '3', '4', '5', '6', '7'];
+    const idx = skillKeys.indexOf(e.key);
+    if (idx >= 0) {
+        const ids = Object.keys(SKILLS);
+        if (idx < ids.length) {
+            if (game.useSkill(ids[idx])) {
+                if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); }
+            }
+        }
+    }
 });
 
 // ========== 皮肤系统 ==========
@@ -240,7 +388,6 @@ function getSkinKeysByUnlock() {
 function refreshSkinSelector() {
     if (!els.skinOptions) return;
     const unlocked = getSkinKeysByUnlock();
-    const count = unlockedAchievements.length;
     els.skinOptions.innerHTML = Object.entries(SNAKE_SKINS).map(([key, skin]) => {
         const isUnlocked = unlocked.includes(key);
         const isActive = key === selectedSkinKey;
@@ -249,11 +396,9 @@ function refreshSkinSelector() {
             data-skin="${key}" ${isUnlocked ? '' : 'disabled'}
             title="${skin.name}${isUnlocked ? '' : ' (需要 ' + need + ' 个成就解锁)'}">
             <span class="skin-icon">${skin.icon}</span>
-            <span class="skin-name">${skin.name}</span>
             ${isUnlocked ? '' : `<span class="skin-lock">🔒${need}</span>`}
         </button>`;
     }).join('');
-    // 绑定事件
     els.skinOptions.querySelectorAll('.skin-btn:not(.locked)').forEach(btn => {
         btn.addEventListener('click', () => selectSkin(btn.dataset.skin));
     });
@@ -270,11 +415,8 @@ function selectSkin(key) {
 
 function initSkin() {
     const saved = storage.getSettings().skin || 'classic';
-    if (getSkinKeysByUnlock().includes(saved)) {
-        selectedSkinKey = saved;
-    } else {
-        selectedSkinKey = 'classic';
-    }
+    if (getSkinKeysByUnlock().includes(saved)) selectedSkinKey = saved;
+    else selectedSkinKey = 'classic';
     game.setSkin(selectedSkinKey);
     refreshSkinSelector();
 }
@@ -284,6 +426,7 @@ function refreshStats() {
     els.statGames.textContent = storage.getSettings().totalGames || 0;
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
+    els.statScore.textContent = game.getTotalScore();
     els.menuBest.textContent = storage.getBestScore();
 }
 
@@ -298,9 +441,7 @@ function incrementGames() {
 
 function updateMaxLength(len) {
     const s = storage.getSettings();
-    if (len > (s.maxLength || 0)) {
-        storage.setSetting('maxLength', len);
-    }
+    if (len > (s.maxLength || 0)) storage.setSetting('maxLength', len);
     refreshStats();
 }
 
@@ -314,26 +455,18 @@ function startTimer() {
     timerInterval = setInterval(updateTimer, 500);
 }
 
-function stopTimer() {
-    clearInterval(timerInterval);
-}
+function stopTimer() { clearInterval(timerInterval); }
 
 function updateTimer() {
     const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
-    const m = Math.floor(elapsed / 60);
-    const s = elapsed % 60;
-    els.hudTime.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    els.hudTime.textContent = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
 }
 
-function getElapsed() {
-    return Math.floor((Date.now() - gameStartTime) / 1000);
-}
+function getElapsed() { return Math.floor((Date.now() - gameStartTime) / 1000); }
 
 // ========== 设备检测 ==========
 const caps = detectCapabilities();
-if (caps.preferJoystick) {
-    document.body.classList.add('show-joystick');
-}
+if (caps.preferJoystick) document.body.classList.add('show-joystick');
 
 // ========== 游戏引擎 ==========
 const game = createGame({
@@ -344,11 +477,19 @@ const game = createGame({
             if (s === 'menu') showMenu();
             if (s === 'playing') hideOverlays();
             if (s === 'paused') showPause();
+            // 音乐切换
+            if (s === 'playing' && musicEnabled) {
+                stopMusic();
+                startMusic();
+            }
+            if (s === 'menu' && musicEnabled) {
+                stopMusic();
+                startMusic();
+            }
         },
         scoreChange: ({ score, length }) => {
             els.hudScore.textContent = score;
             els.hudLength.textContent = length;
-            // 成就检测（门槛提高）
             if (score >= 80) unlockAchievement('score_80');
             if (score >= 150) unlockAchievement('score_150');
             if (score >= 300) unlockAchievement('score_300');
@@ -359,85 +500,81 @@ const game = createGame({
             if (length >= 100) unlockAchievement('len_100');
             updateMaxLength(length);
         },
-        bestChange: (best) => {
-            els.hudBest.textContent = best;
-            els.menuBest.textContent = best;
-        },
+        bestChange: (best) => { els.hudBest.textContent = best; els.menuBest.textContent = best; },
+        totalScoreChange: (ts) => { els.statScore.textContent = ts; },
         buffChange: (list) => renderBuffs(list),
         tick: ({ buffs }) => renderBuffs(buffs),
+        livesChange: (lives) => { /* lives rendered in canvas */ },
+        cheatChange: (active) => {
+            els.cheatIndicator.hidden = !active;
+        },
         eatEvent: (info) => {
-            // 音效
             if (info.jackpot) sfxJackpot();
             else if (info.tier === 'legendary') sfxLegend();
             else if (info.tier === 'epic' || info.tier === 'rare') sfxRare();
             else sfxEat();
-            // 成就
             if (info.jackpot) {
                 unlockAchievement('eat_jackpot');
                 if (info.foodKey) {
                     eatenThisGame.add(info.foodKey);
                     if (info.foodKey === 'phoenix') unlockAchievement('eat_phoenix');
+                    if (info.foodKey === 'heart') unlockAchievement('eat_heart');
                 }
             }
             if (info.comboCount >= 6) unlockAchievement('combo_6');
             if (info.comboCount >= 12) unlockAchievement('combo_12');
             if (info.comboCount >= 20) unlockAchievement('combo_20');
-            // 追踪食物种类
-            if (info.foodKey) eatenThisGame.add(info.foodKey);
+            if (info.foodKey) {
+                eatenThisGame.add(info.foodKey);
+                if (info.foodKey === 'cookie') { shrinkUsed = true; unlockAchievement('use_shrink'); }
+                if (info.foodKey === 'heart') { lifeUsed = true; unlockAchievement('get_life'); }
+            }
         },
-        gameOver: ({ score, length, isNewBest, bestScore }) => {
+        gameOver: ({ score, length, isNewBest, bestScore, cheatMode }) => {
             stopTimer();
             sfxDie();
             const elapsed = getElapsed();
             const newBest = storage.setBestScore(score);
-            els.overScore.textContent = score;
+            els.overScore.textContent = cheatMode ? 'N/A' : score;
             els.overLength.textContent = length;
             const em = Math.floor(elapsed / 60);
             const es = elapsed % 60;
             els.overTime.textContent = `${em}:${String(es).padStart(2, '0')}`;
             els.overBest.textContent = newBest;
-            incrementGames();
-            unlockAchievement('first_game');
-            if (elapsed >= 240) unlockAchievement('time_240');
-            if (elapsed >= 600) unlockAchievement('time_600');
-            // 食物收集成就
-            const commonKeys = ['strawberry', 'cherry', 'mango'];
-            const legendKeys = ['clover', 'diamond', 'rainbow'];
-            const jackpotKeys = ['unicorn', 'phoenix'];
-            if (commonKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_common');
-            if (legendKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_legend');
-            if (jackpotKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_jackpot');
-            if (eatenThisGame.has('unicorn') && eatenThisGame.has('phoenix')) unlockAchievement('eat_both_jp');
+            if (!cheatMode) {
+                incrementGames();
+                unlockAchievement('first_game');
+                if (elapsed >= 240) unlockAchievement('time_240');
+                if (elapsed >= 600) unlockAchievement('time_600');
+                const commonKeys = ['strawberry', 'cherry', 'mango', 'rice'];
+                const legendKeys = ['clover', 'diamond', 'rainbow', 'cake', 'magicMushroom'];
+                const jackpotKeys = ['unicorn', 'phoenix', 'heart'];
+                if (commonKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_common');
+                if (legendKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_legend');
+                if (jackpotKeys.every(k => eatenThisGame.has(k))) unlockAchievement('taste_jackpot');
+                if (eatenThisGame.has('unicorn') && eatenThisGame.has('phoenix')) unlockAchievement('eat_both_jp');
+            }
             eatenThisGame = new Set();
-            // 结算评价
-            if (isNewBest) {
+            if (cheatMode) {
+                els.overEmoji.textContent = '⚡';
+                els.overTitle.textContent = '作弊模式';
+                els.overSub.textContent = '不计分，纯粹享受';
+            } else if (isNewBest) {
                 els.overEmoji.textContent = '🎉';
                 els.overTitle.textContent = '新纪录！';
                 els.overSub.textContent = '太厉害啦，破纪录了 ✨';
             } else if (score >= 1000) {
-                els.overEmoji.textContent = '👑';
-                els.overTitle.textContent = '蛇王！';
-                els.overSub.textContent = '无人能敌 🎆';
+                els.overEmoji.textContent = '👑'; els.overTitle.textContent = '蛇王！'; els.overSub.textContent = '无人能敌 🎆';
             } else if (score >= 500) {
-                els.overEmoji.textContent = '🦄';
-                els.overTitle.textContent = '传奇！';
-                els.overSub.textContent = '神级操作，恭喜 🎆';
+                els.overEmoji.textContent = '🦄'; els.overTitle.textContent = '传奇！'; els.overSub.textContent = '神级操作 🎆';
             } else if (score >= 200) {
-                els.overEmoji.textContent = '🌟';
-                els.overTitle.textContent = '完成出色';
-                els.overSub.textContent = '继续保持手感～';
+                els.overEmoji.textContent = '🌟'; els.overTitle.textContent = '完成出色'; els.overSub.textContent = '继续保持手感～';
             } else if (score >= 50) {
-                els.overEmoji.textContent = '🌸';
-                els.overTitle.textContent = '不错的开始';
-                els.overSub.textContent = '再来一局，挑战更高分';
+                els.overEmoji.textContent = '🌸'; els.overTitle.textContent = '不错的开始'; els.overSub.textContent = '再来一局！';
             } else {
-                els.overEmoji.textContent = '🌱';
-                els.overTitle.textContent = '游戏结束';
-                els.overSub.textContent = '慢慢来，享受每一口';
+                els.overEmoji.textContent = '🌱'; els.overTitle.textContent = '游戏结束'; els.overSub.textContent = '慢慢来，享受每一口';
             }
-            setTimeout(() => {
-                els.overOverlay.hidden = false;
-            }, 700);
+            setTimeout(() => { els.overOverlay.hidden = false; }, 700);
         },
     },
 });
@@ -445,9 +582,8 @@ const game = createGame({
 const input = createInputController({
     onDirection: (dx, dy) => game.setDirection(dx, dy),
     onPause: () => {
-        if (game.getState() === 'playing' || game.getState() === 'paused') {
-            game.togglePause();
-        }
+        const s = game.getState();
+        if (s === 'playing' || s === 'paused') game.togglePause();
     },
 });
 
@@ -458,11 +594,13 @@ requestAnimationFrame(() => game.resize());
 function showMenu() {
     hideOverlays();
     stopTimer();
+    stopMusic();
     els.menuScreen.hidden = false;
     els.gameScreen.hidden = true;
     input.setActive(false);
     refreshStats();
     refreshSkinSelector();
+    if (musicEnabled) startMusic();
 }
 
 function showGame() {
@@ -473,9 +611,7 @@ function showGame() {
     requestAnimationFrame(() => game.resize());
 }
 
-function showPause() {
-    els.pauseOverlay.hidden = false;
-}
+function showPause() { els.pauseOverlay.hidden = false; }
 
 function hideOverlays() {
     els.pauseOverlay.hidden = true;
@@ -487,6 +623,7 @@ els.btnStart.addEventListener('click', () => {
     showGame();
     game.startNewGame();
     startTimer();
+    if (musicEnabled) { stopMusic(); startMusic(); }
 });
 
 els.btnPause.addEventListener('click', () => game.togglePause());
@@ -503,6 +640,7 @@ els.btnRestart.addEventListener('click', () => {
     els.overOverlay.hidden = true;
     game.startNewGame();
     startTimer();
+    if (musicEnabled) { stopMusic(); startMusic(); }
 });
 
 els.btnHome.addEventListener('click', () => {
@@ -524,10 +662,7 @@ window.addEventListener('orientationchange', () => setTimeout(handleResize, 200)
 let lastBuffsKey = '';
 function renderBuffs(list) {
     if (!list || list.length === 0) {
-        if (lastBuffsKey !== '') {
-            els.buffBar.innerHTML = '';
-            lastBuffsKey = '';
-        }
+        if (lastBuffsKey !== '') { els.buffBar.innerHTML = ''; lastBuffsKey = ''; }
         return;
     }
     const key = list.map(b => `${b.type}:${Math.ceil(b.remain / 1000)}`).join('|');
@@ -544,9 +679,17 @@ function renderBuffs(list) {
 }
 
 function buffMeta(type) {
-    if (type === 'speed') return { label: '⚡ 加速', color: '#E8A33D' };
-    if (type === 'slow')  return { label: '🫧 慢动作', color: '#8B7FD8' };
-    return { label: type, color: '#5C5C77' };
+    const map = {
+        speed: { label: '⚡ 加速', color: '#E8A33D' },
+        slow: { label: '🫧 慢动作', color: '#8B7FD8' },
+        invincible: { label: '🛡️ 无敌', color: '#FFD700' },
+        magnet: { label: '🧲 磁力', color: '#4FC3F7' },
+        superSpeed: { label: '⚡ 极速', color: '#FF5722' },
+        invisible: { label: '👻 隐身', color: '#CE93D8' },
+        shield: { label: '🔰 护盾', color: '#90CAF9' },
+        slowTime: { label: '⏳ 慢时间', color: '#81C784' },
+    };
+    return map[type] || { label: type, color: '#5C5C77' };
 }
 
 // ========== 防止页面滚动/缩放 ==========
