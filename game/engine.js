@@ -69,7 +69,6 @@ export function createGame({ canvas, callbacks }) {
     let camera = { x: 0, y: 0 };
     let obstacles = [];
     let obstacleTimer = 0;
-    let loopCount = 0;
 
     renderer.setWorldSize(WORLD_W, WORLD_H);
 
@@ -166,9 +165,8 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function startNewGame() {
-    console.log('engine: startNewGame called');
-    const startX = WORLD_W * 0.5;
-    const startY = WORLD_H * 0.5;
+        const startX = WORLD_W * 0.5;
+        const startY = WORLD_H * 0.5;
         const scale = Math.min(1, Math.min(WORLD_W, WORLD_H) / 500);
         snake = createSnake({
             x: startX, y: startY,
@@ -411,104 +409,101 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function loop(now) {
-    if (stopFlag) return;
-    rafId = requestAnimationFrame(loop);
-    try {
-        loopCount++;
-        if (loopCount % 60 === 0) { console.log('loop running, frame:', loopCount, 'state:', state, 'snake:', !!snake, 'viewW:', renderer.getMetrics().viewW, 'viewH:', renderer.getMetrics().viewH); }
+        if (stopFlag) return;
+        rafId = requestAnimationFrame(loop);
+        try {
         const delta = Math.min(64, now - lastFrame) / 1000;
-            lastFrame = now;
+        lastFrame = now;
 
-            updateParticles(delta);
-            if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - delta / 0.6);
+        updateParticles(delta);
+        if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - delta / 0.6);
 
-            if (comboTimer > 0) { comboTimer -= delta; if (comboTimer <= 0) comboCount = 0; }
+        if (comboTimer > 0) { comboTimer -= delta; if (comboTimer <= 0) comboCount = 0; }
 
-            if (scorePopup) {
-                scorePopup.y += scorePopup.vy * delta;
-                scorePopup.alpha -= delta * 1.2;
-                if (scorePopup.alpha <= 0) scorePopup = null;
+        if (scorePopup) {
+            scorePopup.y += scorePopup.vy * delta;
+            scorePopup.alpha -= delta * 1.2;
+            if (scorePopup.alpha <= 0) scorePopup = null;
+        }
+
+        if (deathAnimation) {
+            deathAnimation.t += delta;
+            if (deathAnimation.t > 1.2) deathAnimation = null;
+        }
+
+        if (state === STATE.PLAYING && snake && snake.alive) {
+            tickBuffs(delta * 1000);
+
+            // tick inventory item cooldowns (in seconds)
+            for (const [id, owned] of inventory) {
+                if (owned.cooldownRemain > 0) {
+                    owned.cooldownRemain -= delta;
+                    if (owned.cooldownRemain <= 0) owned.cooldownRemain = 0;
+                }
             }
 
-            if (deathAnimation) {
-                deathAnimation.t += delta;
-                if (deathAnimation.t > 1.2) deathAnimation = null;
+            doStep(delta);
+
+            // camera follow snake head
+            if (snake.segments.length > 0) {
+                const head = snake.segments[0];
+                const m = renderer.getMetrics();
+                const targetX = head.x - m.viewW / 2;
+                const targetY = head.y - m.viewH / 2;
+                camera.x += (targetX - camera.x) * 0.08;
+                camera.y += (targetY - camera.y) * 0.08;
+                camera.x = Math.max(0, Math.min(WORLD_W - m.viewW, camera.x));
+                camera.y = Math.max(0, Math.min(WORLD_H - m.viewH, camera.y));
+                renderer.setCamera(camera.x, camera.y);
             }
 
-            if (state === STATE.PLAYING && snake && snake.alive) {
-                tickBuffs(delta * 1000);
+            burstTimer -= delta;
+            if (burstTimer <= 0) {
+                burstTimer = BURST_INTERVAL + Math.random() * 6;
+                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 5 + Math.floor(Math.random() * 4), cheatMode);
+                foods.push(...newFoods);
+            }
 
-                // tick inventory item cooldowns (in seconds)
-                for (const [id, owned] of inventory) {
-                    if (owned.cooldownRemain > 0) {
-                        owned.cooldownRemain -= delta;
-                        if (owned.cooldownRemain <= 0) owned.cooldownRemain = 0;
+            // obstacle spawn
+            obstacleTimer -= delta;
+            if (obstacleTimer <= 0) {
+                obstacleTimer = OBSTACLE_INTERVAL + Math.random() * 5;
+                const va = renderer.getVisibleArea();
+                for (let i = 0; i < 2; i++) {
+                    const size = 20 + Math.random() * 30;
+                    const ox = va.x + size + Math.random() * (va.width - size * 2);
+                    const oy = va.y + size + Math.random() * (va.height - size * 2);
+                    // don't spawn too close to snake head
+                    if (snake && snake.segments.length > 0) {
+                        const hdx = snake.segments[0].x - ox;
+                        const hdy = snake.segments[0].y - oy;
+                        if (Math.sqrt(hdx*hdx + hdy*hdy) < 120) continue;
                     }
-                }
-
-                doStep(delta);
-
-                // camera follow snake head
-                if (snake.segments.length > 0) {
-                    const head = snake.segments[0];
-                    const m = renderer.getMetrics();
-                    const targetX = head.x - m.viewW / 2;
-                    const targetY = head.y - m.viewH / 2;
-                    camera.x += (targetX - camera.x) * 0.08;
-                    camera.y += (targetY - camera.y) * 0.08;
-                    camera.x = Math.max(0, Math.min(WORLD_W - m.viewW, camera.x));
-                    camera.y = Math.max(0, Math.min(WORLD_H - m.viewH, camera.y));
-                    renderer.setCamera(camera.x, camera.y);
-                }
-
-                burstTimer -= delta;
-                if (burstTimer <= 0) {
-                    burstTimer = BURST_INTERVAL + Math.random() * 6;
-                    const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 5 + Math.floor(Math.random() * 4), cheatMode);
-                    foods.push(...newFoods);
-                }
-
-                // obstacle spawn
-                obstacleTimer -= delta;
-                if (obstacleTimer <= 0) {
-                    obstacleTimer = OBSTACLE_INTERVAL + Math.random() * 5;
-                    const va = renderer.getVisibleArea();
-                    for (let i = 0; i < 2; i++) {
-                        const size = 20 + Math.random() * 30;
-                        const ox = va.x + size + Math.random() * (va.width - size * 2);
-                        const oy = va.y + size + Math.random() * (va.height - size * 2);
-                        // don't spawn too close to snake head
-                        if (snake && snake.segments.length > 0) {
-                            const hdx = snake.segments[0].x - ox;
-                            const hdy = snake.segments[0].y - oy;
-                            if (Math.sqrt(hdx*hdx + hdy*hdy) < 120) continue;
-                        }
-                        obstacles.push({ x: ox, y: oy, size, color: `hsl(${Math.random()*360},60%,45%)` });
-                        if (obstacles.length > 30) obstacles.shift();
-                    }
+                    obstacles.push({ x: ox, y: oy, size, color: `hsl(${Math.random()*360},60%,45%)` });
+                    if (obstacles.length > 30) obstacles.shift();
                 }
             }
+        }
 
-            if (state === STATE.PLAYING && snake) {
-                foods = maintainFoods(foods, renderer.getVisibleArea(), snake, FOOD_TARGET, cheatMode);
-            }
+        if (state === STATE.PLAYING && snake) {
+            foods = maintainFoods(foods, renderer.getVisibleArea(), snake, FOOD_TARGET, cheatMode);
+        }
 
-            renderer.render({
-                snake, foods, obstacles, flashAlpha, scorePopup,
-                skin: currentSkin,
-                showSnake: state === STATE.PLAYING || state === STATE.GAME_OVER || state === STATE.PAUSED,
-                invincible: invincibleTimer > 0,
-                invisible: invisibleTimer > 0,
-                shield: shieldTimer > 0,
-                deathAnimation,
-                lives,
-                cheatMode,
-            }, now);
+        renderer.render({
+            snake, foods, obstacles, flashAlpha, scorePopup,
+            skin: currentSkin,
+            showSnake: state === STATE.PLAYING || state === STATE.GAME_OVER || state === STATE.PAUSED,
+            invincible: invincibleTimer > 0,
+            invisible: invisibleTimer > 0,
+            shield: shieldTimer > 0,
+            deathAnimation,
+            lives,
+            cheatMode,
+        }, now);
 
-            emit('tick', { state, score: cheatScoreDisabled ? 0 : score, length: snake ? snake.segments.length : 0, buffs: serializeBuffs() });
-            emit('itemsChange', getSelectedItems());
+        emit('tick', { state, score: cheatScoreDisabled ? 0 : score, length: snake ? snake.segments.length : 0, buffs: serializeBuffs() });
+        emit('itemsChange', getSelectedItems());
         } catch (e) {
-            // 防止单帧异常导致游戏循环停止
             console.error('Game loop error:', e);
         }
     }
