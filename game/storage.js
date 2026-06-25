@@ -18,6 +18,13 @@ function read() {
             settings: {
                 dpadVisible: !!obj?.settings?.dpadVisible,
                 highContrast: !!obj?.settings?.highContrast,
+                totalGames: Number(obj?.settings?.totalGames) || 0,
+                maxLength: Number(obj?.settings?.maxLength) || 0,
+                theme: obj?.settings?.theme || 'heal',
+                skin: obj?.settings?.skin || 'classic',
+                sound: obj?.settings?.sound !== undefined ? !!obj.settings.sound : true,
+                music: obj?.settings?.music !== undefined ? !!obj.settings.music : true,
+                landscape: !!obj?.settings?.landscape,
             },
         };
     } catch (e) {

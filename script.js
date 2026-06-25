@@ -62,8 +62,6 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
-    btnLandscape: $('#btn-landscape'),
-    landscapeIcon: $('#landscape-icon'),
 };
 
 // ========== 音效 ==========
@@ -281,10 +279,6 @@ function getBuffDesc(buff) {
 
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
-els.btnLandscape?.addEventListener('click', () => {
-    toggleLandscape();
-    els.landscapeIcon.textContent = isLandscape ? '🔄' : '📱';
-});
 
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
@@ -662,22 +656,6 @@ function buffMeta(type) {
 
 // ========== 防止滚动 ==========
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
-document.addEventListener('dblclick', e => e.preventDefault());
-
-// ========== 横屏切换 ==========
-let isLandscape = false;
-function toggleLandscape() {
-    isLandscape = !isLandscape;
-    document.body.classList.toggle('landscape', isLandscape);
-    storage.setSetting('landscape', isLandscape);
-    setTimeout(() => game.resize(), 100);
-}
-
-// 初始化横屏状态
-if (storage.getSettings().landscape) {
-    isLandscape = true;
-    document.body.classList.add('landscape');
-}
 
 // ========== 初始化 ==========
 loadAchievements();

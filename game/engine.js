@@ -15,17 +15,19 @@ const STATE = {
     GAME_OVER: 'gameover',
 };
 
-const FOOD_TARGET = 12;
-const BURST_INTERVAL = 10;
+const FOOD_TARGET = 20;
+const BURST_INTERVAL = 5;
 const MAX_LIVES = 3;
 const WORLD_W = 2000;
 const WORLD_H = 2000;
+const OBSTACLE_COUNT = 8;
+const OBSTACLE_INTERVAL = 8;
 
 // 道具定义（积分购买，消耗品，每轮携带2个）
 export const ITEMS = {
     invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
-    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 80 } },
-    superSpeed: { name: '极限加速', icon: '⚡', desc: '3秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 3000, factor: 3 } },
+    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 200 } },
+    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
     extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 1000, cooldown: 120, buff: { type: 'life', amount: 1 } },
     invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 400, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
     shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 150, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
@@ -65,6 +67,8 @@ export function createGame({ canvas, callbacks }) {
     let selectedItems = [null, null];
     let deathAnimation = null;
     let camera = { x: 0, y: 0 };
+    let obstacles = [];
+    let obstacleTimer = 0;
 
     renderer.setWorldSize(WORLD_W, WORLD_H);
 
@@ -190,6 +194,8 @@ export function createGame({ canvas, callbacks }) {
         deathAnimation = null;
         cheatScoreDisabled = cheatMode;
         lives = cheatMode ? MAX_LIVES : 1;
+        obstacles = [];
+        obstacleTimer = OBSTACLE_INTERVAL;
         state = STATE.PLAYING;
         lastFrame = performance.now();
         emit('stateChange', state);
@@ -226,6 +232,8 @@ export function createGame({ canvas, callbacks }) {
         flashAlpha = 0;
         scorePopup = null;
         deathAnimation = null;
+        obstacles = [];
+        obstacleTimer = OBSTACLE_INTERVAL;
         refreshSpeedFactor();
         state = STATE.PLAYING;
         lastFrame = performance.now();
@@ -329,6 +337,22 @@ export function createGame({ canvas, callbacks }) {
             }
         }
 
+        // obstacle collision
+        if (!cheatMode && !invincibleTimer && !shieldTimer) {
+            for (const ob of obstacles) {
+                const head = snake.segments[0];
+                const dx = head.x - ob.x;
+                const dy = head.y - ob.y;
+                const r = snake.segmentRadius + ob.size;
+                if (dx * dx + dy * dy < r * r) {
+                    flashAlpha = 0.35;
+                    spawnParticles(head.x, head.y, '#E74C3C', 18);
+                    if (lives > 0) { respawn(); return; }
+                    gameOver(); return;
+                }
+            }
+        }
+
         // 磁力
         if (magnetTimer > 0 && snake && snake.segments.length > 0) {
             const head = snake.segments[0];
@@ -409,10 +433,10 @@ export function createGame({ canvas, callbacks }) {
         if (state === STATE.PLAYING && snake && snake.alive) {
             tickBuffs(delta * 1000);
 
-            // tick inventory item cooldowns
+            // tick inventory item cooldowns (in seconds)
             for (const [id, owned] of inventory) {
                 if (owned.cooldownRemain > 0) {
-                    owned.cooldownRemain -= delta * 1000;
+                    owned.cooldownRemain -= delta;
                     if (owned.cooldownRemain <= 0) owned.cooldownRemain = 0;
                 }
             }
@@ -435,8 +459,28 @@ export function createGame({ canvas, callbacks }) {
             burstTimer -= delta;
             if (burstTimer <= 0) {
                 burstTimer = BURST_INTERVAL + Math.random() * 6;
-                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 3 + Math.floor(Math.random() * 3), cheatMode);
+                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 5 + Math.floor(Math.random() * 4), cheatMode);
                 foods.push(...newFoods);
+            }
+
+            // obstacle spawn
+            obstacleTimer -= delta;
+            if (obstacleTimer <= 0) {
+                obstacleTimer = OBSTACLE_INTERVAL + Math.random() * 5;
+                const va = renderer.getVisibleArea();
+                for (let i = 0; i < 2; i++) {
+                    const size = 20 + Math.random() * 30;
+                    const ox = va.x + size + Math.random() * (va.width - size * 2);
+                    const oy = va.y + size + Math.random() * (va.height - size * 2);
+                    // don't spawn too close to snake head
+                    if (snake && snake.segments.length > 0) {
+                        const hdx = snake.segments[0].x - ox;
+                        const hdy = snake.segments[0].y - oy;
+                        if (Math.sqrt(hdx*hdx + hdy*hdy) < 120) continue;
+                    }
+                    obstacles.push({ x: ox, y: oy, size, color: `hsl(${Math.random()*360},60%,45%)` });
+                    if (obstacles.length > 30) obstacles.shift();
+                }
             }
         }
 
@@ -445,7 +489,7 @@ export function createGame({ canvas, callbacks }) {
         }
 
         renderer.render({
-            snake, foods, flashAlpha, scorePopup,
+            snake, foods, obstacles, flashAlpha, scorePopup,
             skin: currentSkin,
             showSnake: state === STATE.PLAYING || state === STATE.GAME_OVER || state === STATE.PAUSED,
             invincible: invincibleTimer > 0,
