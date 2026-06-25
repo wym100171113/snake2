@@ -157,7 +157,7 @@ export function createRenderer(canvas) {
     function getViewMetrics() { return { viewW, viewH, area }; }
     function getArea() { return { x: 0, y: 0, width: worldW, height: worldH }; }
     function getVisibleArea() {
-        const buf = 300;
+        const buf = 500;
         return {
             x: Math.max(0, cameraX - buf),
             y: Math.max(0, cameraY - buf),

@@ -1232,42 +1232,40 @@ button {
     }
 }
 
-/* ========== 横屏模式（手机横屏） ========== */
-@media (orientation: landscape) and (max-height: 768px) {
-    body.landscape .screen-game {
-        position: relative;
-    }
-    body.landscape .joystick {
-        bottom: max(var(--space-4), env(safe-area-inset-bottom));
-        left: max(var(--space-5), 40px);
-        transform: translateX(0);
-        opacity: 0.4;
-    }
-    body.landscape .game-item-btns {
-        bottom: max(var(--space-4), env(safe-area-inset-bottom));
-        left: auto;
-        right: max(var(--space-5), 40px);
-        transform: translateX(0);
-    }
-    body.landscape .game-item-btn {
-        width: 48px;
-        height: 48px;
-    }
-    body.landscape .game-item-icon {
-        font-size: 18px;
-    }
-    body.landscape .hud {
-        padding: var(--space-1) var(--space-3);
-    }
-    body.landscape .hud-pill {
-        padding: 4px 8px;
-    }
-    body.landscape .hud-value {
-        font-size: 14px;
-    }
-    body.landscape .hud-label {
-        font-size: 10px;
-    }
+/* ========== 横屏模式（手动切换） ========== */
+body.landscape .screen-game {
+    position: relative;
+}
+body.landscape .joystick {
+    bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    left: max(var(--space-5), 40px);
+    transform: translateX(0);
+    opacity: 0.4;
+}
+body.landscape .game-item-btns {
+    bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    left: auto;
+    right: max(var(--space-5), 40px);
+    transform: translateX(0);
+}
+body.landscape .game-item-btn {
+    width: 48px;
+    height: 48px;
+}
+body.landscape .game-item-icon {
+    font-size: 18px;
+}
+body.landscape .hud {
+    padding: var(--space-1) var(--space-3);
+}
+body.landscape .hud-pill {
+    padding: 4px 8px;
+}
+body.landscape .hud-value {
+    font-size: 14px;
+}
+body.landscape .hud-label {
+    font-size: 10px;
 }
 
 /* ========== 食物图鉴面板 ========== */

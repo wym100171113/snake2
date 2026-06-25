@@ -62,6 +62,8 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
+    btnLandscape: $('#btn-landscape'),
+    landscapeIcon: $('#landscape-icon'),
 };
 
 // ========== 音效 ==========
@@ -279,6 +281,10 @@ function getBuffDesc(buff) {
 
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
+els.btnLandscape?.addEventListener('click', () => {
+    toggleLandscape();
+    els.landscapeIcon.textContent = isLandscape ? '🔄' : '📱';
+});
 
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
@@ -382,8 +388,7 @@ function openItemPicker(slot) {
         const o = inv[id];
         return o && o.count > 0 && id !== (selected[1 - slot] ? selected[1 - slot].id : null);
     });
-    if (available.length === 0) return;
-    // 简单弹窗选择
+    // 始终允许打开（空选项可卸下道具）
     let html = `<div class="item-picker-overlay"><div class="item-picker-card"><h3>选择道具</h3><div class="item-picker-list">`;
     html += `<button class="picker-item ${!currentId ? 'active' : ''}" data-id="">🈳 空</button>`;
     for (const [id, item] of available) {
@@ -494,9 +499,11 @@ function updateMaxLength(len) {
 }
 
 // ========== 计时 ==========
-let gameStartTime = 0, timerInterval = 0;
-function startTimer() { gameStartTime = Date.now(); clearInterval(timerInterval); timerInterval = setInterval(updateTimer, 500); }
-function stopTimer() { clearInterval(timerInterval); }
+let gameStartTime = 0, timerInterval = 0, timerPausedAt = 0;
+function startTimer() { gameStartTime = Date.now(); timerPausedAt = 0; clearInterval(timerInterval); timerInterval = setInterval(updateTimer, 500); }
+function pauseTimer() { if (timerPausedAt > 0) return; timerPausedAt = Date.now(); clearInterval(timerInterval); }
+function resumeTimer() { if (timerPausedAt === 0) return; gameStartTime += (Date.now() - timerPausedAt); timerPausedAt = 0; timerInterval = setInterval(updateTimer, 500); }
+function stopTimer() { clearInterval(timerInterval); timerPausedAt = 0; }
 function updateTimer() {
     const e = Math.floor((Date.now() - gameStartTime) / 1000);
     els.hudTime.textContent = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
@@ -514,8 +521,8 @@ const game = createGame({
         onBestScore: () => storage.getBestScore(),
         stateChange: (s) => {
             if (s === 'menu') showMenu();
-            if (s === 'playing') { hideOverlays(); refreshItemBtns(); }
-            if (s === 'paused') showPause();
+            if (s === 'playing') { hideOverlays(); resumeTimer(); refreshItemBtns(); }
+            if (s === 'paused') { showPause(); pauseTimer(); }
             if ((s === 'playing' || s === 'menu') && musicEnabled) { stopMusic(); startMusic(); }
         },
         scoreChange: ({ score, length }) => {
@@ -657,18 +664,20 @@ function buffMeta(type) {
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 document.addEventListener('dblclick', e => e.preventDefault());
 
-// ========== 横屏检测 ==========
+// ========== 横屏切换 ==========
 let isLandscape = false;
-function updateLandscape() {
-    const wasLandscape = isLandscape;
-    isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
-    if (wasLandscape !== isLandscape) {
-        document.body.classList.toggle('landscape', isLandscape);
-    }
+function toggleLandscape() {
+    isLandscape = !isLandscape;
+    document.body.classList.toggle('landscape', isLandscape);
+    storage.setSetting('landscape', isLandscape);
+    setTimeout(() => game.resize(), 100);
 }
-updateLandscape();
-window.addEventListener('resize', updateLandscape);
-window.addEventListener('orientationchange', () => setTimeout(updateLandscape, 100));
+
+// 初始化横屏状态
+if (storage.getSettings().landscape) {
+    isLandscape = true;
+    document.body.classList.add('landscape');
+}
 
 // ========== 初始化 ==========
 loadAchievements();
