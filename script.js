@@ -4,6 +4,7 @@ import { createGame, ITEMS } from './game/engine.js';
 import { createInputController, detectCapabilities } from './game/input.js';
 import { storage } from './game/storage.js';
 import { SNAKE_SKINS } from './game/renderer.js';
+import { FOOD_TYPES } from './game/food.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -57,6 +58,10 @@ const els = {
     itemSlots: $('#item-slots'),
     itemBtn0: $('#item-btn-0'),
     itemBtn1: $('#item-btn-1'),
+    btnEncy: $('#btn-encyclopedia'),
+    encyPanel: $('#encyclopedia-panel'),
+    btnEncyClose: $('#btn-ency-close'),
+    encyList: $('#ency-list'),
 };
 
 // ========== 音效 ==========
@@ -211,6 +216,69 @@ let showingAchievement = false;
 let eatenThisGame = new Set();
 let skillBought = false;
 let skillUsed = false;
+let eatenFoodsAllTime = new Set(); // food encyclopedia
+
+function loadEatenFoods() {
+    try {
+        const arr = JSON.parse(localStorage.getItem('snake.eatenFoods') || '[]');
+        eatenFoodsAllTime = new Set(arr);
+    } catch (e) { eatenFoodsAllTime = new Set(); }
+}
+
+function saveEatenFoods() {
+    try { localStorage.setItem('snake.eatenFoods', JSON.stringify([...eatenFoodsAllTime])); } catch (e) {}
+}
+
+function unlockFoodInEncy(key) {
+    if (eatenFoodsAllTime.has(key)) return;
+    eatenFoodsAllTime.add(key);
+    saveEatenFoods();
+}
+
+function renderEncyclopediaPanel() {
+    if (!els.encyList) return;
+    const foods = Object.values(FOOD_TYPES);
+    const total = foods.length;
+    const unlocked = eatenFoodsAllTime.size;
+    const t = $('#ency-panel-title');
+    if (t) t.textContent = `食物图鉴 (${unlocked}/${total})`;
+
+    const tierLabels = { common: '常见', rare: '稀有', epic: '史诗', legendary: '传奇', jackpot: '超级大奖' };
+    els.encyList.innerHTML = foods.map(f => {
+        const known = eatenFoodsAllTime.has(f.key);
+        const buffDesc = f.buff ? getBuffDesc(f.buff) : '无特殊效果';
+        return `<div class="ency-item ${known ? 'unlocked' : 'locked'}">
+            <span class="ency-emoji">${known ? f.emoji : '❓'}</span>
+            <div class="ency-text">
+                <span class="ency-name">${known ? f.name : '???'}</span>
+                <span class="ency-desc">${known ? (f.desc || '') : '尚未吃到'}</span>
+                <span class="ency-stats">${known ? `+${f.score}分 · +${f.growth}长度 · ${tierLabels[f.tier] || f.tier}` : ''}</span>
+                ${known ? `<span class="ency-buff">${buffDesc}</span>` : ''}
+            </div>
+            <span class="ency-tier-badge tier-${f.tier}">${tierLabels[f.tier] || f.tier}</span>
+        </div>`;
+    }).join('');
+}
+
+function getBuffDesc(buff) {
+    if (!buff) return '';
+    const map = {
+        speed: `加速${buff.factor}x ${buff.duration/1000}秒`,
+        slow: `减速${buff.factor}x ${buff.duration/1000}秒`,
+        invincible: `无敌${buff.duration/1000}秒`,
+        magnet: `磁力${buff.duration/1000}秒`,
+        superSpeed: `${buff.factor}x极速${buff.duration/1000}秒`,
+        invisible: `隐身${buff.duration/1000}秒`,
+        shield: `护盾${buff.duration/1000}秒`,
+        slowTime: `慢动作${buff.factor}x ${buff.duration/1000}秒`,
+        shrink: `瘦身${buff.amount}节`,
+        life: `加${buff.amount}条命`,
+    };
+    return map[buff.type] || '';
+}
+
+els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
+els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
 
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
@@ -478,6 +546,7 @@ const game = createGame({
                 unlockAchievement('eat_jackpot');
                 if (info.foodKey) {
                     eatenThisGame.add(info.foodKey);
+                    unlockFoodInEncy(info.foodKey);
                     if (info.foodKey === 'phoenix') unlockAchievement('eat_phoenix');
                     if (info.foodKey === 'heart') unlockAchievement('eat_heart');
                 }
@@ -487,6 +556,7 @@ const game = createGame({
             if (info.comboCount >= 20) unlockAchievement('combo_20');
             if (info.foodKey) {
                 eatenThisGame.add(info.foodKey);
+                unlockFoodInEncy(info.foodKey);
                 if (info.foodKey === 'cookie') unlockAchievement('use_shrink');
                 if (info.foodKey === 'heart') unlockAchievement('get_life');
             }
@@ -587,8 +657,22 @@ function buffMeta(type) {
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 document.addEventListener('dblclick', e => e.preventDefault());
 
+// ========== 横屏检测 ==========
+let isLandscape = false;
+function updateLandscape() {
+    const wasLandscape = isLandscape;
+    isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+    if (wasLandscape !== isLandscape) {
+        document.body.classList.toggle('landscape', isLandscape);
+    }
+}
+updateLandscape();
+window.addEventListener('resize', updateLandscape);
+window.addEventListener('orientationchange', () => setTimeout(updateLandscape, 100));
+
 // ========== 初始化 ==========
 loadAchievements();
+loadEatenFoods();
 initTheme();
 initSkin();
 refreshStats();

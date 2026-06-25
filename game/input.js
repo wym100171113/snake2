@@ -99,6 +99,7 @@ export function createInputController({ onDirection, onPause, onReset }) {
             activePointer = true;
             usingJoystick = true;
             pressedKeys.clear();
+            joystickEl.classList.add('active');
             move(clientX, clientY);
         }
 
@@ -120,6 +121,7 @@ export function createInputController({ onDirection, onPause, onReset }) {
             joystickDx = 0;
             joystickDy = 0;
             usingJoystick = false;
+            joystickEl.classList.remove('active');
             setKnob(0, 0);
             fire(0, 0);
         }

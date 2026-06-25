@@ -1,4 +1,4 @@
-// engine.js — 游戏主引擎：状态机 + 主循环 + 道具/buff + 生命 + 道具 + 作弊
+// engine.js — 游戏主引擎：状态机 + 主循环 + 道具/buff + 生命 + 道具 + 作弊 + 相机滚动
 
 import {
     createSnake, setTargetDirection, update as snakeUpdate,
@@ -18,6 +18,8 @@ const STATE = {
 const FOOD_TARGET = 8;
 const BURST_INTERVAL = 18;
 const MAX_LIVES = 3;
+const WORLD_W = 2000;
+const WORLD_H = 2000;
 
 // 道具定义（积分购买，消耗品，每轮携带2个）
 export const ITEMS = {
@@ -59,9 +61,12 @@ export function createGame({ canvas, callbacks }) {
     let cheatMode = false;
     let cheatScoreDisabled = false;
     let totalScore = 0;
-    let inventory = new Map();      // { count, cooldownRemain }
-    let selectedItems = [null, null]; // 本轮携带的2个道具ID
+    let inventory = new Map();
+    let selectedItems = [null, null];
     let deathAnimation = null;
+    let camera = { x: 0, y: 0 };
+
+    renderer.setWorldSize(WORLD_W, WORLD_H);
 
     function emit(evt, payload) {
         if (callbacks && typeof callbacks[evt] === 'function') {
@@ -139,10 +144,9 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function startNewGame() {
-        const area = renderer.getArea();
-        const startX = area.x + area.width * 0.5;
-        const startY = area.y + area.height * 0.5;
-        const scale = Math.min(1, Math.min(area.width, area.height) / 500);
+        const startX = WORLD_W * 0.5;
+        const startY = WORLD_H * 0.5;
+        const scale = Math.min(1, Math.min(WORLD_W, WORLD_H) / 500);
         snake = createSnake({
             x: startX, y: startY,
             initialAngle: 0, initialLength: 4,
@@ -150,7 +154,8 @@ export function createGame({ canvas, callbacks }) {
             segmentRadius: 11 * scale,
             turnRate: 5.2,
         });
-        foods = maintainFoods([], renderer.getArea(), snake, FOOD_TARGET, cheatMode);
+        camera = { x: startX - (renderer.getMetrics().viewW || 400) / 2, y: startY - (renderer.getMetrics().viewH || 400) / 2 };
+        foods = maintainFoods([], renderer.getVisibleArea(), snake, FOOD_TARGET, cheatMode);
         score = 0;
         buffs.clear();
         speedFactor = 1;
@@ -183,10 +188,9 @@ export function createGame({ canvas, callbacks }) {
         if (lives <= 0) { gameOver(); return; }
         lives--;
         emit('livesChange', lives);
-        const area = renderer.getArea();
-        const startX = area.x + area.width * 0.5;
-        const startY = area.y + area.height * 0.5;
-        const scale = Math.min(1, Math.min(area.width, area.height) / 500);
+        const startX = WORLD_W * 0.5;
+        const startY = WORLD_H * 0.5;
+        const scale = Math.min(1, Math.min(WORLD_W, WORLD_H) / 500);
         snake = createSnake({
             x: startX, y: startY,
             initialAngle: 0, initialLength: Math.max(4, Math.floor(snake.segments.length * 0.6)),
@@ -194,6 +198,7 @@ export function createGame({ canvas, callbacks }) {
             segmentRadius: 11 * scale,
             turnRate: 5.2,
         });
+        camera = { x: startX - (renderer.getMetrics().viewW || 400) / 2, y: startY - (renderer.getMetrics().viewH || 400) / 2 };
         buffs.clear();
         speedFactor = 1;
         invincibleTimer = 3000;
@@ -261,7 +266,7 @@ export function createGame({ canvas, callbacks }) {
     function doStep(dt) {
         snakeUpdate(snake, dt);
 
-        const area = renderer.getArea();
+        const area = { x: 0, y: 0, width: WORLD_W, height: WORLD_H };
         const wall = checkWallCollision(snake, area);
         if (wall) {
             if (invincibleTimer > 0) {
@@ -381,16 +386,29 @@ export function createGame({ canvas, callbacks }) {
             tickBuffs(delta * 1000);
             doStep(delta);
 
+            // camera follow snake head
+            if (snake.segments.length > 0) {
+                const head = snake.segments[0];
+                const m = renderer.getMetrics();
+                const targetX = head.x - m.viewW / 2;
+                const targetY = head.y - m.viewH / 2;
+                camera.x += (targetX - camera.x) * 0.08;
+                camera.y += (targetY - camera.y) * 0.08;
+                camera.x = Math.max(0, Math.min(WORLD_W - m.viewW, camera.x));
+                camera.y = Math.max(0, Math.min(WORLD_H - m.viewH, camera.y));
+                renderer.setCamera(camera.x, camera.y);
+            }
+
             burstTimer -= delta;
             if (burstTimer <= 0) {
                 burstTimer = BURST_INTERVAL + Math.random() * 6;
-                const newFoods = burstSpawn(renderer.getArea(), snake, 3 + Math.floor(Math.random() * 3), cheatMode);
+                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 3 + Math.floor(Math.random() * 3), cheatMode);
                 foods.push(...newFoods);
             }
         }
 
         if (state === STATE.PLAYING && snake) {
-            foods = maintainFoods(foods, renderer.getArea(), snake, FOOD_TARGET, cheatMode);
+            foods = maintainFoods(foods, renderer.getVisibleArea(), snake, FOOD_TARGET, cheatMode);
         }
 
         renderer.render({

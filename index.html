@@ -100,13 +100,16 @@
                 </div>
             </div>
 
-            <!-- 成就查看按钮 + 音效 + 技能商店 + 音乐 -->
+            <!-- 成就查看按钮 + 音效 + 技能商店 + 音乐 + 图鉴 -->
             <div class="menu-row">
                 <button class="btn-icon" id="btn-achievements" type="button" title="成就">
                     <span>🏆</span>
                 </button>
                 <button class="btn-icon" id="btn-shop" type="button" title="道具商店">
                     <span>🛒</span>
+                </button>
+                <button class="btn-icon" id="btn-encyclopedia" type="button" title="食物图鉴">
+                    <span>📖</span>
                 </button>
                 <button class="btn-icon" id="btn-sound" type="button" title="音效">
                     <span id="sound-icon">🔊</span>
@@ -266,6 +269,20 @@
             </div>
             <p class="shop-hint">购买后点击主菜单"携带道具"选择，游戏中按 <kbd>Q</kbd>/<kbd>E</kbd> 或点击按钮使用</p>
             <div class="shop-list" id="shop-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 食物图鉴面板 -->
+    <div class="overlay" id="encyclopedia-panel" hidden>
+        <div class="overlay-card overlay-ach">
+            <div class="ach-panel-header">
+                <h2 id="ency-panel-title">食物图鉴</h2>
+                <button class="hud-btn" id="btn-ency-close" type="button" aria-label="关闭">✕</button>
+            </div>
+            <p class="shop-hint">吃到食物后解锁对应图鉴，查看食物属性</p>
+            <div class="ency-list" id="ency-list">
                 <!-- 动态生成 -->
             </div>
         </div>

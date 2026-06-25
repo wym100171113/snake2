@@ -604,21 +604,23 @@ button {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: var(--color-card);
-    border: 2px solid var(--color-mint-2);
+    background: rgba(255, 255, 255, 0.55);
+    border: 2px solid rgba(86, 197, 150, 0.5);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     position: relative;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
     pointer-events: auto;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease, background 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
-.game-item-btn:active { transform: scale(0.9); }
-.game-item-btn.cd { opacity: 0.5; cursor: not-allowed; }
+.game-item-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.85); }
+.game-item-btn.cd { opacity: 0.35; cursor: not-allowed; }
 
 .game-item-icon { font-size: 22px; line-height: 1; }
 .game-item-count {
@@ -1042,7 +1044,13 @@ button {
     left: 50%;
     transform: translateX(-50%);
     z-index: 6;
+    opacity: 0.45;
     transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.joystick:active,
+.joystick.active {
+    opacity: 0.75;
 }
 
 .joystick.hidden {
@@ -1223,3 +1231,118 @@ button {
         pointer-events: none;
     }
 }
+
+/* ========== 横屏模式（手机横屏） ========== */
+@media (orientation: landscape) and (max-height: 768px) {
+    body.landscape .screen-game {
+        position: relative;
+    }
+    body.landscape .joystick {
+        bottom: max(var(--space-4), env(safe-area-inset-bottom));
+        left: max(var(--space-5), 40px);
+        transform: translateX(0);
+        opacity: 0.4;
+    }
+    body.landscape .game-item-btns {
+        bottom: max(var(--space-4), env(safe-area-inset-bottom));
+        left: auto;
+        right: max(var(--space-5), 40px);
+        transform: translateX(0);
+    }
+    body.landscape .game-item-btn {
+        width: 48px;
+        height: 48px;
+    }
+    body.landscape .game-item-icon {
+        font-size: 18px;
+    }
+    body.landscape .hud {
+        padding: var(--space-1) var(--space-3);
+    }
+    body.landscape .hud-pill {
+        padding: 4px 8px;
+    }
+    body.landscape .hud-value {
+        font-size: 14px;
+    }
+    body.landscape .hud-label {
+        font-size: 10px;
+    }
+}
+
+/* ========== 食物图鉴面板 ========== */
+.ency-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-right: var(--space-1);
+}
+
+.ency-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-cream);
+    transition: background 0.6s ease;
+}
+
+.ency-item.locked {
+    opacity: 0.5;
+}
+
+.ency-emoji {
+    font-size: 28px;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+}
+
+.ency-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.ency-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.ency-desc {
+    font-size: 11px;
+    color: var(--color-text-soft);
+}
+
+.ency-stats {
+    font-size: 10px;
+    color: var(--color-mint-2);
+    font-weight: 600;
+}
+
+.ency-buff {
+    font-size: 10px;
+    color: #E8A33D;
+    font-weight: 600;
+}
+
+.ency-tier-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.tier-common { background: #E8F5E9; color: #388E3C; }
+.tier-rare { background: #E3F2FD; color: #1976D2; }
+.tier-epic { background: #F3E5F5; color: #7B1FA2; }
+.tier-legendary { background: #FFF3E0; color: #E65100; }
+.tier-jackpot { background: #FCE4EC; color: #C62828; }

@@ -118,6 +118,8 @@ export function createRenderer(canvas) {
     let viewW = 0, viewH = 0;
     let area = { x: 0, y: 0, width: 0, height: 0 };
     let bgPattern = null, bgPatternW = 0, bgPatternH = 0;
+    let worldW = 0, worldH = 0;
+    let cameraX = 0, cameraY = 0;
 
     function buildBackground(w, h) {
         const off = document.createElement('canvas');
@@ -149,22 +151,45 @@ export function createRenderer(canvas) {
         bgPatternW = viewW; bgPatternH = viewH;
     }
 
-    function getArea() { return area; }
+    function setWorldSize(w, h) { worldW = w; worldH = h; }
+    function setCamera(cx, cy) { cameraX = cx; cameraY = cy; }
+    function getCamera() { return { x: cameraX, y: cameraY }; }
+    function getViewMetrics() { return { viewW, viewH, area }; }
+    function getArea() { return { x: 0, y: 0, width: worldW, height: worldH }; }
+    function getVisibleArea() {
+        const buf = 300;
+        return {
+            x: Math.max(0, cameraX - buf),
+            y: Math.max(0, cameraY - buf),
+            width: Math.min(worldW, cameraX + viewW + buf) - Math.max(0, cameraX - buf),
+            height: Math.min(worldH, cameraY + viewH + buf) - Math.max(0, cameraY - buf),
+        };
+    }
 
     function clear() { ctx.clearRect(0, 0, viewW, viewH); }
 
     function drawBackground() {
-        if (bgPattern) { ctx.drawImage(bgPattern, 0, 0, bgPatternW, bgPatternH); }
-        else {
-            const grd = ctx.createRadialGradient(viewW * 0.3, viewH * 0.2, 0, viewW * 0.5, viewH * 0.5, Math.max(viewW, viewH));
-            grd.addColorStop(0, '#FFFDFB'); grd.addColorStop(1, '#EAF4FF');
-            ctx.fillStyle = grd; ctx.fillRect(0, 0, viewW, viewH);
-        }
+        // draw world boundary
         ctx.save();
-        ctx.strokeStyle = 'rgba(168, 230, 207, 0.6)'; ctx.lineWidth = 2;
-        ctx.setLineDash([6, 6]);
-        roundRect(ctx, area.x, area.y, area.width, area.height, 18);
-        ctx.stroke();
+        ctx.translate(-cameraX, -cameraY);
+        ctx.fillStyle = '#F0F4F8';
+        ctx.fillRect(0, 0, worldW, worldH);
+        // grid
+        ctx.strokeStyle = 'rgba(168, 230, 207, 0.25)';
+        ctx.lineWidth = 1;
+        const gridSize = 80;
+        for (let x = gridSize; x < worldW; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, worldH); ctx.stroke();
+        }
+        for (let y = gridSize; y < worldH; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(worldW, y); ctx.stroke();
+        }
+        // world border
+        ctx.strokeStyle = 'rgba(255, 107, 107, 0.8)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([12, 6]);
+        ctx.strokeRect(2, 2, worldW - 4, worldH - 4);
+        ctx.setLineDash([]);
         ctx.restore();
     }
 
@@ -208,7 +233,7 @@ export function createRenderer(canvas) {
         const shield = opts.shield;
 
         ctx.save();
-        if (invis) ctx.globalAlpha = 0.3;
+        if (invis) ctx.globalAlpha = 0.08;
 
         // 皮肤拖尾
         if (sk.effect && segs.length > 2) {
@@ -371,6 +396,8 @@ export function createRenderer(canvas) {
         if (viewW <= 0 || viewH <= 0) return;
         clear();
         drawBackground();
+        ctx.save();
+        ctx.translate(-cameraX, -cameraY);
         for (const f of (state.foods || [])) drawFood(f, time);
         if (state.showSnake !== false && state.snake) {
             drawSnake(state.snake, state.skin, time, {
@@ -383,11 +410,12 @@ export function createRenderer(canvas) {
         drawParticles();
         drawDeathAnimation(state.deathAnimation, time);
         drawScorePopup(state.scorePopup);
+        ctx.restore();
         drawFlash(state.flashAlpha || 0);
         drawLives(state.lives, state.cheatMode);
     }
 
-    return { resize, render, getArea, getMetrics: () => ({ viewW, viewH, area }) };
+    return { resize, render, getArea, getVisibleArea, setWorldSize, setCamera, getCamera, getMetrics: () => ({ viewW, viewH, area }) };
 }
 
 function roundRect(ctx, x, y, w, h, r) {
