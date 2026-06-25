@@ -8,6 +8,11 @@ import { FOOD_TYPES } from './game/food.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+// ========== 全局错误诊断 ==========
+window.addEventListener('error', (e) => { console.error('Global error:', e.message, e.filename, e.lineno); });
+window.addEventListener('unhandledrejection', (e) => { console.error('Unhandled rejection:', e.reason); });
+console.log('Game initializing...');
+
 const els = {
     menuScreen: $('#menu-screen'),
     gameScreen: $('#game-screen'),
@@ -603,7 +608,6 @@ const input = createInputController({
 
 game.start();
 game.loadSelectedItems();
-requestAnimationFrame(() => game.resize());
 
 // ========== 视图切换 ==========
 function showMenu() {
@@ -616,12 +620,24 @@ function showMenu() {
 function showGame() {
     els.menuScreen.hidden = true; els.gameScreen.hidden = false;
     els.hudTime.textContent = '0:00'; input.setActive(true);
-    requestAnimationFrame(() => game.resize());
+    game.resize();
 }
 function showPause() { els.pauseOverlay.hidden = false; }
 function hideOverlays() { els.pauseOverlay.hidden = true; els.overOverlay.hidden = true; }
 
-els.btnStart.addEventListener('click', () => { showGame(); game.startNewGame(); startTimer(); refreshItemBtns(); if (musicEnabled) { stopMusic(); startMusic(); } });
+els.btnStart.addEventListener('click', () => {
+    try {
+        console.log('btnStart clicked!');
+        showGame(); 
+        console.log('showGame done, state:', game.getState());
+        game.startNewGame(); 
+        console.log('startNewGame done, state:', game.getState());
+        startTimer(); 
+        refreshItemBtns(); 
+        if (musicEnabled) { stopMusic(); startMusic(); }
+        console.log('btnStart handler complete');
+    } catch (e) { console.error('btnStart click error:', e); }
+});
 els.btnPause.addEventListener('click', () => game.togglePause());
 els.btnResume.addEventListener('click', () => game.togglePause());
 els.btnPauseHome.addEventListener('click', () => { game.togglePause(); game.stop(); game.start(); showMenu(); });
@@ -665,3 +681,22 @@ initSkin();
 refreshStats();
 showMenu();
 refreshItemSlots();
+console.log('Game initialized successfully. State:', game.getState());
+window.__debugGame = game;
+window.__debugInput = input;
+window.__debugEls = els;
+
+// Auto-test: click start button after 2 seconds
+setTimeout(() => {
+    console.log('=== AUTO-TEST: clicking start button ===');
+    console.log('els.btnStart:', els.btnStart);
+    console.log('game state before click:', game.getState());
+    if (els.btnStart) {
+        els.btnStart.click();
+        console.log('click() called');
+    }
+    setTimeout(() => {
+        console.log('=== AUTO-TEST: after click ===');
+        console.log('game state:', game.getState());
+    }, 500);
+}, 2000);
