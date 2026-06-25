@@ -1033,7 +1033,7 @@ button {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
     display: block;
-    touch-action: manipulation;
+    touch-action: none;
     transition: box-shadow 0.6s ease;
 }
 
@@ -1232,6 +1232,42 @@ button {
     }
 }
 
+/* ========== 横屏模式（手动切换） ========== */
+body.landscape .screen-game {
+    position: relative;
+}
+body.landscape .joystick {
+    bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    left: max(var(--space-5), 40px);
+    transform: translateX(0);
+    opacity: 0.4;
+}
+body.landscape .game-item-btns {
+    bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    left: auto;
+    right: max(var(--space-5), 40px);
+    transform: translateX(0);
+}
+body.landscape .game-item-btn {
+    width: 48px;
+    height: 48px;
+}
+body.landscape .game-item-icon {
+    font-size: 18px;
+}
+body.landscape .hud {
+    padding: var(--space-1) var(--space-3);
+}
+body.landscape .hud-pill {
+    padding: 4px 8px;
+}
+body.landscape .hud-value {
+    font-size: 14px;
+}
+body.landscape .hud-label {
+    font-size: 10px;
+}
+
 /* ========== 食物图鉴面板 ========== */
 .ency-list {
     display: flex;
@@ -1307,21 +1343,4 @@ button {
 .tier-rare { background: #E3F2FD; color: #1976D2; }
 .tier-epic { background: #F3E5F5; color: #7B1FA2; }
 .tier-legendary { background: #FFF3E0; color: #E65100; }
-
-/* 开局聚焦闪光 */
-.start-flash {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: radial-gradient(circle at center,
-        rgba(168, 230, 207, 0.55) 0%,
-        rgba(168, 230, 207, 0.15) 40%,
-        rgba(168, 230, 207, 0) 70%);
-    pointer-events: none;
-    animation: startFlash 0.7s ease-out forwards;
-}
-@keyframes startFlash {
-    0%   { opacity: 0; transform: scale(0.5); }
-    40%  { opacity: 1; transform: scale(1.15); }
-    100% { opacity: 0; transform: scale(1.6); }
-}
+.tier-jackpot { background: #FCE4EC; color: #C62828; }

@@ -157,7 +157,7 @@ export function createRenderer(canvas) {
     function getViewMetrics() { return { viewW, viewH, area }; }
     function getArea() { return { x: 0, y: 0, width: worldW, height: worldH }; }
     function getVisibleArea() {
-        const buf = 800;
+        const buf = 500;
         return {
             x: Math.max(0, cameraX - buf),
             y: Math.max(0, cameraY - buf),
@@ -190,29 +190,6 @@ export function createRenderer(canvas) {
         ctx.setLineDash([12, 6]);
         ctx.strokeRect(2, 2, worldW - 4, worldH - 4);
         ctx.setLineDash([]);
-        ctx.restore();
-    }
-
-    function drawObstacle(ob) {
-        ctx.save();
-        ctx.fillStyle = ob.color;
-        ctx.globalAlpha = 0.7;
-        ctx.beginPath();
-        // draw as a rounded square
-        const s = ob.size;
-        ctx.moveTo(ob.x - s, ob.y - s + s * 0.3);
-        ctx.arcTo(ob.x - s, ob.y - s, ob.x - s + s * 0.3, ob.y - s, s * 0.3);
-        ctx.lineTo(ob.x + s - s * 0.3, ob.y - s);
-        ctx.arcTo(ob.x + s, ob.y - s, ob.x + s, ob.y - s + s * 0.3, s * 0.3);
-        ctx.lineTo(ob.x + s, ob.y + s - s * 0.3);
-        ctx.arcTo(ob.x + s, ob.y + s, ob.x + s - s * 0.3, ob.y + s, s * 0.3);
-        ctx.lineTo(ob.x - s + s * 0.3, ob.y + s);
-        ctx.arcTo(ob.x - s, ob.y + s, ob.x - s, ob.y + s - s * 0.3, s * 0.3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
         ctx.restore();
     }
 
@@ -421,7 +398,6 @@ export function createRenderer(canvas) {
         drawBackground();
         ctx.save();
         ctx.translate(-cameraX, -cameraY);
-        for (const o of (state.obstacles || [])) drawObstacle(o);
         for (const f of (state.foods || [])) drawFood(f, time);
         if (state.showSnake !== false && state.snake) {
             drawSnake(state.snake, state.skin, time, {

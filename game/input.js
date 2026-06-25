@@ -78,7 +78,6 @@ export function createInputController({ onDirection, onPause, onReset }) {
 
     // 虚拟遥感
     function bindJoystick() {
-        const joystickEl = document.getElementById('joystick');
         const zone = document.getElementById('joystick-zone');
         const knob = document.getElementById('joystick-knob');
         if (!zone || !knob) return;
@@ -100,7 +99,7 @@ export function createInputController({ onDirection, onPause, onReset }) {
             activePointer = true;
             usingJoystick = true;
             pressedKeys.clear();
-            if (joystickEl) joystickEl.classList.add('active');
+            joystickEl.classList.add('active');
             move(clientX, clientY);
         }
 
@@ -122,7 +121,7 @@ export function createInputController({ onDirection, onPause, onReset }) {
             joystickDx = 0;
             joystickDy = 0;
             usingJoystick = false;
-            if (joystickEl) joystickEl.classList.remove('active');
+            joystickEl.classList.remove('active');
             setKnob(0, 0);
             fire(0, 0);
         }
