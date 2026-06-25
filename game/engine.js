@@ -1,4 +1,4 @@
-// engine.js — 游戏主引擎：状态机 + 主循环 + 道具/buff + 生命 + 技能 + 作弊
+// engine.js — 游戏主引擎：状态机 + 主循环 + 道具/buff + 生命 + 道具 + 作弊
 
 import {
     createSnake, setTargetDirection, update as snakeUpdate,
@@ -13,15 +13,14 @@ const STATE = {
     PLAYING: 'playing',
     PAUSED: 'paused',
     GAME_OVER: 'gameover',
-    RESPAWNING: 'respawning',
 };
 
 const FOOD_TARGET = 8;
 const BURST_INTERVAL = 18;
 const MAX_LIVES = 3;
 
-// 技能定义（积分购买）
-export const SKILLS = {
+// 道具定义（积分购买，消耗品，每轮携带2个）
+export const ITEMS = {
     invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
     magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 80 } },
     superSpeed: { name: '极限加速', icon: '⚡', desc: '3秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 3000, factor: 3 } },
@@ -49,7 +48,6 @@ export function createGame({ canvas, callbacks }) {
     let comboTimer = 0;
     let scorePopup = null;
     let currentSkin = SNAKE_SKINS.classic;
-    // 新系统
     let lives = 1;
     let invincibleTimer = 0;
     let magnetTimer = 0;
@@ -60,10 +58,10 @@ export function createGame({ canvas, callbacks }) {
     let slowTimeTimer = 0;
     let cheatMode = false;
     let cheatScoreDisabled = false;
-    let totalScore = 0;          // 累积积分
-    let ownedSkills = new Map(); // 已购买技能: { count, cooldownRemain }
-    let deathAnimation = null;  // { x, y, t, segs }
-    let respawnTimer = 0;
+    let totalScore = 0;
+    let inventory = new Map();      // { count, cooldownRemain }
+    let selectedItems = [null, null]; // 本轮携带的2个道具ID
+    let deathAnimation = null;
 
     function emit(evt, payload) {
         if (callbacks && typeof callbacks[evt] === 'function') {
@@ -129,25 +127,15 @@ export function createGame({ canvas, callbacks }) {
         let changed = false;
         for (const [type, b] of buffs) {
             b.remain -= deltaMs;
-            if (b.remain <= 0) {
-                buffs.delete(type);
-                changed = true;
-            }
+            if (b.remain <= 0) { buffs.delete(type); changed = true; }
         }
         if (changed) refreshSpeedFactor();
-        // 独立计时器
         if (invincibleTimer > 0) { invincibleTimer -= deltaMs; if (invincibleTimer <= 0) invincibleTimer = 0; }
         if (magnetTimer > 0) { magnetTimer -= deltaMs; if (magnetTimer <= 0) magnetTimer = 0; }
-        if (superSpeedTimer > 0) {
-            superSpeedTimer -= deltaMs;
-            if (superSpeedTimer <= 0) { superSpeedTimer = 0; refreshSpeedFactor(); }
-        }
+        if (superSpeedTimer > 0) { superSpeedTimer -= deltaMs; if (superSpeedTimer <= 0) { superSpeedTimer = 0; refreshSpeedFactor(); } }
         if (invisibleTimer > 0) { invisibleTimer -= deltaMs; if (invisibleTimer <= 0) invisibleTimer = 0; }
         if (shieldTimer > 0) { shieldTimer -= deltaMs; if (shieldTimer <= 0) shieldTimer = 0; }
-        if (slowTimeTimer > 0) {
-            slowTimeTimer -= deltaMs;
-            if (slowTimeTimer <= 0) { slowTimeTimer = 0; refreshSpeedFactor(); }
-        }
+        if (slowTimeTimer > 0) { slowTimeTimer -= deltaMs; if (slowTimeTimer <= 0) { slowTimeTimer = 0; refreshSpeedFactor(); } }
     }
 
     function startNewGame() {
@@ -178,7 +166,6 @@ export function createGame({ canvas, callbacks }) {
         shieldTimer = 0;
         slowTimeTimer = 0;
         deathAnimation = null;
-        respawnTimer = 0;
         cheatScoreDisabled = cheatMode;
         lives = cheatMode ? MAX_LIVES : 1;
         state = STATE.PLAYING;
@@ -189,6 +176,7 @@ export function createGame({ canvas, callbacks }) {
         emit('buffChange', serializeBuffs());
         emit('livesChange', lives);
         emit('cheatChange', cheatMode);
+        emit('itemsChange', getSelectedItems());
     }
 
     function respawn() {
@@ -208,7 +196,7 @@ export function createGame({ canvas, callbacks }) {
         });
         buffs.clear();
         speedFactor = 1;
-        invincibleTimer = 3000; // 重生后3秒无敌
+        invincibleTimer = 3000;
         superSpeedTimer = 0;
         invisibleTimer = 0;
         shieldTimer = 0;
@@ -216,7 +204,6 @@ export function createGame({ canvas, callbacks }) {
         flashAlpha = 0;
         scorePopup = null;
         deathAnimation = null;
-        respawnTimer = 0;
         refreshSpeedFactor();
         state = STATE.PLAYING;
         lastFrame = performance.now();
@@ -233,7 +220,6 @@ export function createGame({ canvas, callbacks }) {
         }
         const isNewBest = !cheatScoreDisabled && score > bestScore;
         if (isNewBest) bestScore = score;
-        // 积分累积（作弊模式不计分）
         if (!cheatScoreDisabled) {
             totalScore += score;
             try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
@@ -250,24 +236,12 @@ export function createGame({ canvas, callbacks }) {
 
     function togglePause(force) {
         if (typeof force === 'boolean') {
-            if (force && state === STATE.PLAYING) {
-                state = STATE.PAUSED;
-                emit('stateChange', state);
-            } else if (!force && state === STATE.PAUSED) {
-                state = STATE.PLAYING;
-                lastFrame = performance.now();
-                emit('stateChange', state);
-            }
+            if (force && state === STATE.PLAYING) { state = STATE.PAUSED; emit('stateChange', state); }
+            else if (!force && state === STATE.PAUSED) { state = STATE.PLAYING; lastFrame = performance.now(); emit('stateChange', state); }
             return;
         }
-        if (state === STATE.PLAYING) {
-            state = STATE.PAUSED;
-            emit('stateChange', state);
-        } else if (state === STATE.PAUSED) {
-            state = STATE.PLAYING;
-            lastFrame = performance.now();
-            emit('stateChange', state);
-        }
+        if (state === STATE.PLAYING) { state = STATE.PAUSED; emit('stateChange', state); }
+        else if (state === STATE.PAUSED) { state = STATE.PLAYING; lastFrame = performance.now(); emit('stateChange', state); }
     }
 
     function serializeBuffs() {
@@ -291,7 +265,6 @@ export function createGame({ canvas, callbacks }) {
         const wall = checkWallCollision(snake, area);
         if (wall) {
             if (invincibleTimer > 0) {
-                // 无敌：穿墙反弹
                 const head = snake.segments[0];
                 if (head.x - snake.segmentRadius < area.x) head.x = area.x + snake.segmentRadius;
                 if (head.x + snake.segmentRadius > area.x + area.width) head.x = area.x + area.width - snake.segmentRadius;
@@ -303,42 +276,35 @@ export function createGame({ canvas, callbacks }) {
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
                 flashAlpha = 0.35;
-                const h = snake.segments[0];
-                spawnParticles(h.x, h.y, '#FF8B94', 18);
-                spawnParticles(h.x, h.y, '#A8E6CF', 10);
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', 18);
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', 10);
                 if (lives > 0) { respawn(); return; }
-                gameOver();
-                return;
+                gameOver(); return;
             }
         }
 
         const self = checkSelfCollision(snake);
         if (self) {
-            if (cheatMode) {
-                // 作弊模式：不死亡
-            } else if (invincibleTimer > 0) {
-                // 无敌：不死亡
+            if (cheatMode || invincibleTimer > 0) {
+                // 不死亡
             } else if (shieldTimer > 0) {
                 shieldTimer = 0;
                 flashAlpha = 0.25;
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
                 flashAlpha = 0.35;
-                const h = snake.segments[0];
-                spawnParticles(h.x, h.y, '#FF8B94', 18);
-                spawnParticles(h.x, h.y, '#A8E6CF', 10);
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', 18);
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', 10);
                 if (lives > 0) { respawn(); return; }
-                gameOver();
-                return;
+                gameOver(); return;
             }
         }
 
-        // 磁力：吸引食物
+        // 磁力
         if (magnetTimer > 0 && snake && snake.segments.length > 0) {
             const head = snake.segments[0];
             for (const f of foods) {
-                const dx = head.x - f.x;
-                const dy = head.y - f.y;
+                const dx = head.x - f.x, dy = head.y - f.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < magnetRadius && dist > 0.1) {
                     const force = (1 - dist / magnetRadius) * 120 * dt;
@@ -360,8 +326,8 @@ export function createGame({ canvas, callbacks }) {
                 grow(snake, f.growth);
                 if (f.buff) applyBuff(f.buff);
 
-                const particleCount = f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14;
-                spawnParticles(f.x, f.y, f.color, particleCount);
+                const pc = f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14;
+                spawnParticles(f.x, f.y, f.color, pc);
                 if (f.jackpot) {
                     spawnParticles(f.x, f.y, '#FFD700', 20);
                     spawnParticles(f.x, f.y, '#FF6B9D', 20);
@@ -398,10 +364,7 @@ export function createGame({ canvas, callbacks }) {
         updateParticles(delta);
         if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - delta / 0.6);
 
-        if (comboTimer > 0) {
-            comboTimer -= delta;
-            if (comboTimer <= 0) comboCount = 0;
-        }
+        if (comboTimer > 0) { comboTimer -= delta; if (comboTimer <= 0) comboCount = 0; }
 
         if (scorePopup) {
             scorePopup.y += scorePopup.vy * delta;
@@ -409,7 +372,6 @@ export function createGame({ canvas, callbacks }) {
             if (scorePopup.alpha <= 0) scorePopup = null;
         }
 
-        // 死亡动画
         if (deathAnimation) {
             deathAnimation.t += delta;
             if (deathAnimation.t > 1.2) deathAnimation = null;
@@ -486,18 +448,9 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function onVisibilityChange() {
-        if (document.hidden && state === STATE.PLAYING) {
-            togglePause(true);
-        }
+        if (document.hidden && state === STATE.PLAYING) togglePause(true);
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // 技能冷却
-    function tickSkillCooldowns(delta) {
-        for (const [, skill] of ownedSkills) {
-            if (skill.cooldownRemain > 0) skill.cooldownRemain -= delta;
-        }
-    }
 
     return {
         start, stop, resize, startNewGame, togglePause,
@@ -511,38 +464,61 @@ export function createGame({ canvas, callbacks }) {
         getCheatMode: () => cheatMode,
         getTotalScore: () => totalScore,
         getLives: () => lives,
-        buySkill: (id) => {
-            const skill = SKILLS[id];
-            if (!skill) return false;
-            if (totalScore < skill.cost) return false;
-            totalScore -= skill.cost;
+
+        // 道具系统
+        buyItem: (id) => {
+            const item = ITEMS[id];
+            if (!item) return false;
+            if (totalScore < item.cost) return false;
+            totalScore -= item.cost;
             try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
-            const owned = ownedSkills.get(id) || { count: 0, cooldownRemain: 0 };
+            const owned = inventory.get(id) || { count: 0, cooldownRemain: 0 };
             owned.count++;
-            ownedSkills.set(id, owned);
+            inventory.set(id, owned);
             emit('totalScoreChange', totalScore);
             return true;
         },
-        useSkill: (id) => {
-            const owned = ownedSkills.get(id);
+
+        selectItems: (id1, id2) => {
+            selectedItems = [id1 || null, id2 || null];
+            try { localStorage.setItem('snake.selectedItems', JSON.stringify(selectedItems)); } catch (e) {}
+            emit('itemsChange', selectedItems);
+        },
+
+        useItem: (slot) => {
+            if (slot !== 0 && slot !== 1) return false;
+            const id = selectedItems[slot];
+            if (!id) return false;
+            const owned = inventory.get(id);
             if (!owned || owned.count <= 0) return false;
             if (owned.cooldownRemain > 0) return false;
-            const skill = SKILLS[id];
+            const item = ITEMS[id];
+            if (!item) return false;
             if (state !== STATE.PLAYING || !snake) return false;
             owned.count--;
-            owned.cooldownRemain = skill.cooldown;
-            if (owned.count <= 0) ownedSkills.delete(id);
-            applyBuff(skill.buff);
+            owned.cooldownRemain = item.cooldown;
+            if (owned.count <= 0) inventory.delete(id);
+            applyBuff(item.buff);
+            emit('itemsChange', getSelectedItems());
             return true;
         },
-        getOwnedSkills: () => {
+
+        getSelectedItems: () => {
+            return selectedItems.map(id => id ? { id, ...ITEMS[id], count: (inventory.get(id) || { count: 0 }).count, cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain } : null);
+        },
+
+        getInventory: () => {
             const result = {};
-            for (const [id, v] of ownedSkills) {
-                result[id] = { count: v.count, cooldownRemain: v.cooldownRemain, cooldown: SKILLS[id].cooldown };
+            for (const [id, v] of inventory) {
+                result[id] = { count: v.count, cooldownRemain: v.cooldownRemain, cooldown: ITEMS[id].cooldown };
             }
             return result;
         },
-        tickSkillCooldowns: (dt) => tickSkillCooldowns(dt),
-        getSkills: () => SKILLS,
+
+        getItems: () => ITEMS,
+        loadSelectedItems: () => {
+            try { selectedItems = JSON.parse(localStorage.getItem('snake.selectedItems') || '[null,null]'); } catch (e) { selectedItems = [null, null]; }
+            return selectedItems;
+        },
     };
 }
