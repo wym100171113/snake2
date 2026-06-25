@@ -138,6 +138,10 @@ export function createGame({ canvas, callbacks }) {
         if (slowTimeTimer > 0) { slowTimeTimer -= deltaMs; if (slowTimeTimer <= 0) { slowTimeTimer = 0; refreshSpeedFactor(); } }
     }
 
+    function getSelectedItemsInternal() {
+        return selectedItems.map(id => id ? { id, ...ITEMS[id], count: (inventory.get(id) || { count: 0 }).count, cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain } : null);
+    }
+
     function startNewGame() {
         const area = renderer.getArea();
         const startX = area.x + area.width * 0.5;
@@ -176,7 +180,7 @@ export function createGame({ canvas, callbacks }) {
         emit('buffChange', serializeBuffs());
         emit('livesChange', lives);
         emit('cheatChange', cheatMode);
-        emit('itemsChange', getSelectedItems());
+        emit('itemsChange', getSelectedItemsInternal());
     }
 
     function respawn() {
@@ -499,7 +503,7 @@ export function createGame({ canvas, callbacks }) {
             owned.cooldownRemain = item.cooldown;
             if (owned.count <= 0) inventory.delete(id);
             applyBuff(item.buff);
-            emit('itemsChange', getSelectedItems());
+            emit('itemsChange', getSelectedItemsInternal());
             return true;
         },
 
