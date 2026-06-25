@@ -1307,4 +1307,21 @@ button {
 .tier-rare { background: #E3F2FD; color: #1976D2; }
 .tier-epic { background: #F3E5F5; color: #7B1FA2; }
 .tier-legendary { background: #FFF3E0; color: #E65100; }
-.tier-jackpot { background: #FCE4EC; color: #C62828; }
+
+/* 开局聚焦闪光 */
+.start-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: radial-gradient(circle at center,
+        rgba(168, 230, 207, 0.55) 0%,
+        rgba(168, 230, 207, 0.15) 40%,
+        rgba(168, 230, 207, 0) 70%);
+    pointer-events: none;
+    animation: startFlash 0.7s ease-out forwards;
+}
+@keyframes startFlash {
+    0%   { opacity: 0; transform: scale(0.5); }
+    40%  { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 0; transform: scale(1.6); }
+}

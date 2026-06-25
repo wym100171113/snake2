@@ -444,12 +444,16 @@ export function createGame({ canvas, callbacks }) {
 
             doStep(delta);
 
-            // camera follow snake head
+            // camera follow snake head with lookahead in movement direction
             if (snake.segments.length > 0) {
                 const head = snake.segments[0];
                 const m = renderer.getMetrics();
-                const targetX = head.x - m.viewW / 2;
-                const targetY = head.y - m.viewH / 2;
+                // 朝向方向的前瞻：让蛇看起来在画布上向某个方向移动
+                const lookAhead = 120;
+                const lx = Math.cos(snake.angle) * lookAhead;
+                const ly = Math.sin(snake.angle) * lookAhead;
+                const targetX = head.x + lx - m.viewW / 2;
+                const targetY = head.y + ly - m.viewH / 2;
                 camera.x += (targetX - camera.x) * 0.08;
                 camera.y += (targetY - camera.y) * 0.08;
                 camera.x = Math.max(0, Math.min(WORLD_W - m.viewW, camera.x));

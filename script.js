@@ -617,6 +617,11 @@ function showGame() {
     els.menuScreen.hidden = true; els.gameScreen.hidden = false;
     els.hudTime.textContent = '0:00'; input.setActive(true);
     requestAnimationFrame(() => game.resize());
+    // 开局聚焦闪光，让玩家明显感知到游戏已启动
+    const flash = document.createElement('div');
+    flash.className = 'start-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 700);
 }
 function showPause() { els.pauseOverlay.hidden = false; }
 function hideOverlays() { els.pauseOverlay.hidden = true; els.overOverlay.hidden = true; }
