@@ -63,6 +63,7 @@ export function createGame({ canvas, callbacks }) {
     let cheatMode = false;
     let cheatScoreDisabled = false;
     let totalScore = 0;
+    let elapsedTime = 0;
     let inventory = new Map();
     let selectedItems = [null, null];
     let deathAnimation = null;
@@ -124,6 +125,21 @@ export function createGame({ canvas, callbacks }) {
                 break;
             case 'doubleScore':
                 doubleScoreTimer = Math.max(doubleScoreTimer, dur);
+                break;
+            case 'extendBuffs':
+                // 延长所有正面效果60秒
+                invincibleTimer = Math.max(invincibleTimer, invincibleTimer > 0 ? invincibleTimer + 60 : 0);
+                magnetTimer = Math.max(magnetTimer, magnetTimer > 0 ? magnetTimer + 60 : 0);
+                superSpeedTimer = Math.max(superSpeedTimer, superSpeedTimer > 0 ? superSpeedTimer + 60 : 0);
+                shieldTimer = Math.max(shieldTimer, shieldTimer > 0 ? shieldTimer + 60 : 0);
+                fatTimer = Math.max(fatTimer, fatTimer > 0 ? fatTimer + 60 : 0);
+                doubleScoreTimer = Math.max(doubleScoreTimer, doubleScoreTimer > 0 ? doubleScoreTimer + 60 : 0);
+                // 也延长speed buff
+                ['speed'].forEach(t => {
+                    const b = buffs.get(t);
+                    if (b && b.remain > 0) { b.remain += 60; b.duration += 60; }
+                });
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FFD700', 30);
                 break;
             case 'shrink':
                 if (snake) {
@@ -187,6 +203,7 @@ export function createGame({ canvas, callbacks }) {
         burstTimer = BURST_INTERVAL;
         comboCount = 0;
         comboTimer = 0;
+        elapsedTime = 0;
         scorePopup = null;
         invincibleTimer = 0;
         magnetTimer = 0;
@@ -234,6 +251,7 @@ export function createGame({ canvas, callbacks }) {
         slowTimeTimer = 0;
         fatTimer = 0;
         doubleScoreTimer = 0;
+        elapsedTime = 0;
         flashAlpha = 0;
         scorePopup = null;
         deathAnimation = null;
@@ -437,6 +455,7 @@ export function createGame({ canvas, callbacks }) {
         if (state === STATE.PLAYING && snake && snake.alive) {
             tickBuffs(delta * 1000);
             doStep(delta);
+            elapsedTime += delta;
 
             // camera follow snake head
             if (snake.segments.length > 0) {
@@ -476,7 +495,7 @@ export function createGame({ canvas, callbacks }) {
             cheatMode,
         }, now);
 
-        emit('tick', { state, score: cheatScoreDisabled ? 0 : score, length: snake ? snake.segments.length : 0, buffs: serializeBuffs() });
+        emit('tick', { state, score: cheatScoreDisabled ? 0 : score, length: snake ? snake.segments.length : 0, buffs: serializeBuffs(), elapsed: elapsedTime });
     }
 
     function start() {

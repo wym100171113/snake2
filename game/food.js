@@ -28,6 +28,7 @@ export const FOOD_TYPES = {
     dumpling:  { key:'dumpling',name:'饺子',emoji:'🥟',color:'#FFE0B2',score:25,growth:3,radius:15,lifespan:10000,weight:7,buff:{type:'magnet',duration:10000,radius:150},tier:'rare',desc:'热腾腾饺子，磁力吸引10秒'},
     burrito:   { key:'burrito',name:'墨西哥卷饼',emoji:'🌯',color:'#D7A86E',score:24,growth:3,radius:15,lifespan:10500,weight:7,buff:{type:'shield',duration:10000},tier:'rare',desc:'卷饼，护盾10秒'},
     tamale:    { key:'tamale',name:'玉米粽',emoji:'🫔',color:'#A5D6A7',score:22,growth:3,radius:14,lifespan:11000,weight:8,buff:{type:'doubleScore',duration:10000},tier:'rare',desc:'玉米粽，双倍积分10秒'},
+    timeFruit: { key:'timeFruit',name:'时光果实',emoji:'⏳',color:'#FFD700',score:50,growth:5,radius:20,lifespan:8000,weight:3,buff:{type:'extendBuffs',duration:0},tier:'epic',desc:'时光果实，正面效果延长60秒'},
     // ── 史诗 ──
     watermelon:{ key:'watermelon',name:'西瓜',emoji:'🍉',color:'#6BCB77',score:40,growth:5,radius:20,lifespan:8000,weight:4,tier:'epic',desc:'大西瓜，史诗食物'},
     star:      { key:'star',name:'星星',emoji:'⭐',color:'#FFB347',score:50,growth:5,radius:17,lifespan:8000,weight:4,tier:'epic',desc:'闪亮星星，史诗食物'},

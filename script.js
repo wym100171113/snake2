@@ -275,6 +275,7 @@ function getBuffDesc(buff) {
         life: `加${buff.amount}条命`,
         fat: `变粗${buff.duration/1000}秒`,
         doubleScore: `双倍积分${buff.duration/1000}秒`,
+        extendBuffs: `正面效果延长60秒`,
     };
     return map[buff.type] || '';
 }
@@ -495,21 +496,16 @@ function updateMaxLength(len) {
 }
 
 // ========== 计时 ==========
-let gameStartTime = 0;
-function startTimer() {
-    gameStartTime = Date.now();
-    updateTimerUI();
-}
-function stopTimer() { gameStartTime = 0; updateTimerUI(); }
-function updateTimerUI() {
-    if (!gameStartTime) { els.hudTime.textContent = '0:00'; return; }
-    const e = Math.floor((Date.now() - gameStartTime) / 1000);
+let gameElapsed = 0;
+function startTimer() { gameElapsed = 0; }
+function stopTimer() { gameElapsed = 0; updateTimerUI(0); }
+function updateTimerUI(elapsed) {
+    if (elapsed === undefined) elapsed = gameElapsed;
+    gameElapsed = elapsed;
+    const e = Math.floor(elapsed);
     els.hudTime.textContent = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
 }
-function getElapsed() {
-    if (!gameStartTime) return 0;
-    return Math.floor((Date.now() - gameStartTime) / 1000);
-}
+function getElapsed() { return Math.floor(gameElapsed); }
 
 // ========== 设备 ==========
 const caps = detectCapabilities();
@@ -539,10 +535,10 @@ const game = createGame({
             updateMaxLength(length);
         },
         bestChange: (best) => { els.hudBest.textContent = best; },
-        totalScoreChange: (ts) => { els.statScore.textContent = ts; },
+        totalScoreChange: (ts) => {}, // 不再覆盖statScore
         itemsChange: () => { refreshItemBtns(); refreshItemSlots(); },
         buffChange: (list) => renderBuffs(list),
-        tick: ({ buffs }) => { renderBuffs(buffs); updateTimerUI(); },
+        tick: ({ buffs, elapsed }) => { renderBuffs(buffs); if (elapsed !== undefined) updateTimerUI(elapsed); },
         livesChange: () => {},
         cheatChange: (active) => { els.cheatIndicator.hidden = !active; },
         eatEvent: (info) => {
@@ -656,9 +652,9 @@ function buffMeta(type) {
     const map = {
         speed:'⚡ 加速',slow:'🫧 慢动作',invincible:'🛡️ 无敌',magnet:'🧲 磁力',
         superSpeed:'⚡ 极速',invisible:'👻 隐身',shield:'🔰 护盾',slowTime:'⏳ 慢时间',
-        fat:'🐍 变粗',doubleScore:'💎 双倍积分',
+        fat:'🐍 变粗',doubleScore:'💎 双倍积分',extendBuffs:'⏳ 时光延长',
     };
-    const colors = { speed:'#E8A33D',slow:'#8B7FD8',invincible:'#FFD700',magnet:'#4FC3F7',superSpeed:'#FF5722',invisible:'#CE93D8',shield:'#90CAF9',slowTime:'#81C784',fat:'#FF7043',doubleScore:'#FFD700' };
+    const colors = { speed:'#E8A33D',slow:'#8B7FD8',invincible:'#FFD700',magnet:'#4FC3F7',superSpeed:'#FF5722',invisible:'#CE93D8',shield:'#90CAF9',slowTime:'#81C784',fat:'#FF7043',doubleScore:'#FFD700',extendBuffs:'#FFD700' };
     return { label: map[type] || type, color: colors[type] || '#5C5C77' };
 }
 
