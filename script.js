@@ -77,8 +77,22 @@ let musicInterval = 0;
 
 function getAudioCtx() {
     if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
     return audioCtx;
 }
+
+let hasUserGesture = false;
+function markGesture() {
+    if (hasUserGesture) return;
+    hasUserGesture = true;
+    getAudioCtx();
+    if (musicEnabled) startMusic();
+}
+document.addEventListener('click', markGesture, { once: true, capture: true });
+document.addEventListener('keydown', markGesture, { once: true, capture: true });
+document.addEventListener('touchstart', markGesture, { once: true, capture: true });
 
 function playTone(freq, duration, type = 'sine', vol = 0.08) {
     if (!soundEnabled) return;
@@ -103,7 +117,7 @@ const MENU_MELODY = [262,330,392,330,294,349,440,349,330,294,262,330];
 const GAME_MELODY = [392,440,494,523,494,440,392,349,330,349,392,440,494,523,587,523];
 
 function startMusic() {
-    if (!musicEnabled) return;
+    if (!musicEnabled || !hasUserGesture) return;
     stopMusic();
     const melody = game.getState() === 'playing' ? GAME_MELODY : MENU_MELODY;
     let idx = 0;
