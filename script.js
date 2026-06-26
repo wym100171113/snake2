@@ -62,11 +62,6 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
-    btnPerm: $('#btn-perm'),
-    permPanel: $('#perm-panel'),
-    btnPermClose: $('#btn-perm-close'),
-    permList: $('#perm-list'),
-    permScore: $('#perm-score'),
 };
 
 // ========== 音效 ==========
@@ -288,45 +283,6 @@ function getBuffDesc(buff) {
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
 
-// ========== 永久能力面板 ==========
-const PERM_ABILITIES = [
-    { key: 'durationStack', name: '时长叠加', icon: '⏱️', desc: '食物效果时长可叠加（不再只取最大值）', cost: 30000 },
-    { key: 'effectStack', name: '效果叠加', icon: '📊', desc: '同种效果可叠加最多3次（如变粗1.3x→2.1x）', cost: 30000 },
-    { key: 'speedBoost', name: '永久提速', icon: '💨', desc: '永久25%加速 + 免疫所有减速效果', cost: 30000 },
-];
-
-function renderPermPanel() {
-    if (!els.permList) return;
-    const perms = game.getPermAbilities();
-    const ts = game.getTotalScore();
-    if (els.permScore) els.permScore.textContent = ts;
-    els.permList.innerHTML = PERM_ABILITIES.map(p => {
-        const owned = perms[p.key];
-        const canBuy = !owned && ts >= p.cost;
-        return `<div class="shop-item ${owned ? 'owned' : ''}">
-            <span class="shop-item-icon">${p.icon}</span>
-            <div class="shop-item-info">
-                <span class="shop-item-name">${p.name}</span>
-                <span class="shop-item-desc">${p.desc}</span>
-            </div>
-            ${owned
-                ? '<span class="shop-item-badge">已拥有</span>'
-                : `<button class="shop-item-btn ${canBuy ? '' : 'disabled'}" data-key="${p.key}">💰${p.cost}</button>`}
-        </div>`;
-    }).join('');
-    els.permList.querySelectorAll('.shop-item-btn').forEach(b => {
-        b.addEventListener('click', () => {
-            const key = b.dataset.key;
-            if (game.buyPermAbility(key)) {
-                renderPermPanel();
-            }
-        });
-    });
-}
-
-els.btnPerm?.addEventListener('click', () => { renderPermPanel(); els.permPanel.hidden = false; });
-els.btnPermClose?.addEventListener('click', () => { els.permPanel.hidden = true; });
-
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
 }
@@ -525,13 +481,7 @@ function refreshStats() {
     els.statGames.textContent = storage.getSettings().totalGames || 0;
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
-    els.statScore.textContent = getBestScoreDirect();
-}
-function getBestScoreDirect() {
-    try { return parseInt(localStorage.getItem('snake.bestScore') || '0') || 0; } catch (e) { return 0; }
-}
-function setBestScoreDirect(s) {
-    try { localStorage.setItem('snake.bestScore', s); } catch (e) {}
+    els.statScore.textContent = storage.getBestScore();
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -565,7 +515,7 @@ if (caps.preferJoystick) document.body.classList.add('show-joystick');
 const game = createGame({
     canvas: els.canvas,
     callbacks: {
-        onBestScore: () => getBestScoreDirect(),
+        onBestScore: () => storage.getBestScore(),
         stateChange: (s) => {
             if (s === 'menu') showMenu();
             if (s === 'playing') { hideOverlays(); refreshItemBtns(); }
@@ -618,9 +568,7 @@ const game = createGame({
         gameOver: ({ score, length, isNewBest, bestScore, cheatMode }) => {
             stopTimer(); sfxDie();
             const elapsed = getElapsed();
-            const prev = getBestScoreDirect();
-            const newBest = score > prev ? score : prev;
-            if (score > prev) setBestScoreDirect(score);
+            const newBest = storage.setBestScore(score);
             els.overScore.textContent = cheatMode ? 'N/A' : score;
             els.overLength.textContent = length;
             els.overTime.textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
