@@ -51,7 +51,7 @@ export function createGame({ canvas, callbacks }) {
     let comboTimer = 0;
     let scorePopup = null;
     let currentSkin = SNAKE_SKINS.classic;
-    let lives = 1;
+    let lives = 0;
     let invincibleTimer = 0;
     let magnetTimer = 0;
     let magnetRadius = 150;
@@ -71,6 +71,24 @@ export function createGame({ canvas, callbacks }) {
     let camera = { x: 0, y: 0 };
     let permanentAbility = false;
     let buffStacks = new Map(); // track how many stacks of each effect
+
+    function saveInventory() {
+        const obj = {};
+        for (const [id, v] of inventory) {
+            obj[id] = { count: v.count, cooldownRemain: v.cooldownRemain };
+        }
+        try { localStorage.setItem('snake.inventory', JSON.stringify(obj)); } catch (e) {}
+    }
+
+    function loadInventory() {
+        try {
+            const raw = JSON.parse(localStorage.getItem('snake.inventory') || '{}');
+            inventory = new Map();
+            for (const [id, v] of Object.entries(raw)) {
+                if (ITEMS[id]) inventory.set(id, { count: v.count || 0, cooldownRemain: v.cooldownRemain || 0 });
+            }
+        } catch (e) { inventory = new Map(); }
+    }
 
     renderer.setWorldSize(WORLD_W, WORLD_H);
 
@@ -525,6 +543,7 @@ export function createGame({ canvas, callbacks }) {
         if (callbacks.onBestScore) bestScore = callbacks.onBestScore();
         try { totalScore = parseInt(localStorage.getItem('snake.totalScore') || '0') || 0; } catch (e) { totalScore = 0; }
         try { permanentAbility = localStorage.getItem('snake.permanentAbility') === '1'; } catch (e) { permanentAbility = false; }
+        loadInventory();
         emit('bestChange', bestScore);
         emit('totalScoreChange', totalScore);
         state = STATE.MENU;
@@ -593,6 +612,7 @@ export function createGame({ canvas, callbacks }) {
             const owned = inventory.get(id) || { count: 0, cooldownRemain: 0 };
             owned.count++;
             inventory.set(id, owned);
+            saveInventory();
             emit('totalScoreChange', totalScore);
             return true;
         },
@@ -620,6 +640,7 @@ export function createGame({ canvas, callbacks }) {
                 selectedItems[slot] = null;
                 try { localStorage.setItem('snake.selectedItems', JSON.stringify(selectedItems)); } catch (e) {}
             }
+            saveInventory();
             applyBuff(item.buff);
             emit('itemsChange', getSelectedItems());
             return true;

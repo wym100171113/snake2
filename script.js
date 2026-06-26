@@ -19,6 +19,7 @@ const els = {
     statAchievements: $('#stat-achievements'),
     statMaxlen: $('#stat-maxlen'),
     statScore: $('#stat-score'),
+    menuBest: $('#menu-best'),
     hudScore: $('#hud-score'),
     hudLength: $('#hud-length'),
     hudBest: $('#hud-best'),
@@ -481,8 +482,9 @@ function refreshStats() {
     els.statGames.textContent = storage.getSettings().totalGames || 0;
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
+    els.statScore.textContent = game.getTotalScore();
     const bs = storage.getBestScore() || parseInt(localStorage.getItem('snake._best') || '0') || 0;
-    els.statScore.textContent = bs;
+    if (els.menuBest) els.menuBest.textContent = bs;
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -537,7 +539,7 @@ const game = createGame({
             updateMaxLength(length);
         },
         bestChange: (best) => { els.hudBest.textContent = best; },
-        totalScoreChange: (ts) => {}, // 不再覆盖statScore
+        totalScoreChange: (ts) => { els.statScore.textContent = ts; },
         itemsChange: () => { refreshItemBtns(); refreshItemSlots(); },
         buffChange: (list) => renderBuffs(list),
         tick: ({ buffs, elapsed }) => { renderBuffs(buffs); if (elapsed !== undefined) updateTimerUI(elapsed); },
