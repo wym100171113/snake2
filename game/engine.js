@@ -68,6 +68,18 @@ export function createGame({ canvas, callbacks }) {
     let selectedItems = [null, null];
     let deathAnimation = null;
     let camera = { x: 0, y: 0 };
+    // 永久能力
+    let permAbilities = { durationStack: false, effectStack: false, speedBoost: false };
+    // 效果叠加追踪
+    let effectStackCounts = new Map();
+
+    function loadPermAbilities() {
+        try {
+            const raw = localStorage.getItem('snake.permAbilities');
+            if (raw) permAbilities = JSON.parse(raw);
+        } catch (e) {}
+    }
+    loadPermAbilities();
 
     renderer.setWorldSize(WORLD_W, WORLD_H);
 
@@ -79,31 +91,39 @@ export function createGame({ canvas, callbacks }) {
 
     function applyBuff(buff) {
         if (!buff || !snake) return;
-        // 作弊模式：取消负面效果，增强正面效果
+        // 永久能力：免疫减速
         const negativeTypes = ['slow', 'slowTime', 'invisible', 'shrink'];
-        if (cheatMode && negativeTypes.includes(buff.type)) return;
+        if ((cheatMode || permAbilities.speedBoost) && negativeTypes.includes(buff.type)) return;
+        // 作弊模式额外取消隐身和瘦身
+        if (cheatMode && ['invisible', 'shrink'].includes(buff.type)) return;
+        if (!cheatMode && permAbilities.speedBoost && ['invisible', 'shrink'].includes(buff.type)) {
+            // 永久能力不影响隐身和瘦身，继续正常处理
+        }
         const dur = cheatMode ? (buff.duration || 0) * 2 : buff.duration;
         const factor = cheatMode && buff.factor ? Math.max(buff.factor, 2) : buff.factor;
+        // 永久能力：时长叠加
+        const useStack = permAbilities.durationStack;
+        const useEffectStack = permAbilities.effectStack;
         switch (buff.type) {
             case 'speed':
             case 'slow': {
                 const cur = buffs.get(buff.type) || { remain: 0, factor: 1, duration: 0 };
                 cur.factor = factor;
-                cur.duration = dur;
-                cur.remain = dur;
+                cur.duration = useStack ? cur.duration + dur : dur;
+                cur.remain = useStack ? cur.remain + dur : dur;
                 buffs.set(buff.type, cur);
                 refreshSpeedFactor();
                 break;
             }
             case 'invincible':
-                invincibleTimer = Math.max(invincibleTimer, dur);
+                invincibleTimer = useStack ? invincibleTimer + dur : Math.max(invincibleTimer, dur);
                 break;
             case 'magnet':
-                magnetTimer = Math.max(magnetTimer, dur);
+                magnetTimer = useStack ? magnetTimer + dur : Math.max(magnetTimer, dur);
                 magnetRadius = buff.radius || 150;
                 break;
             case 'superSpeed':
-                superSpeedTimer = Math.max(superSpeedTimer, dur);
+                superSpeedTimer = useStack ? superSpeedTimer + dur : Math.max(superSpeedTimer, dur);
                 setSpeedFactor(snake, factor || 3);
                 break;
             case 'life':
@@ -111,30 +131,35 @@ export function createGame({ canvas, callbacks }) {
                 emit('livesChange', lives);
                 break;
             case 'invisible':
-                invisibleTimer = Math.max(invisibleTimer, dur);
+                invisibleTimer = useStack ? invisibleTimer + dur : Math.max(invisibleTimer, dur);
                 break;
             case 'shield':
-                shieldTimer = Math.max(shieldTimer, dur);
+                shieldTimer = useStack ? shieldTimer + dur : Math.max(shieldTimer, dur);
                 break;
             case 'slowTime':
-                slowTimeTimer = Math.max(slowTimeTimer, dur);
+                slowTimeTimer = useStack ? slowTimeTimer + dur : Math.max(slowTimeTimer, dur);
                 setSpeedFactor(snake, factor || buff.factor || 0.5);
                 break;
-            case 'fat':
-                fatTimer = Math.max(fatTimer, dur);
+            case 'fat': {
+                if (useEffectStack) {
+                    const cnt = (effectStackCounts.get('fat') || 0) + 1;
+                    if (cnt > 3) break; // 最多叠加3次
+                    effectStackCounts.set('fat', cnt);
+                }
+                fatTimer = useStack ? fatTimer + dur : Math.max(fatTimer, dur);
                 break;
+            }
             case 'doubleScore':
-                doubleScoreTimer = Math.max(doubleScoreTimer, dur);
+                doubleScoreTimer = useStack ? doubleScoreTimer + dur : Math.max(doubleScoreTimer, dur);
                 break;
             case 'extendBuffs':
                 // 延长所有正面效果60秒
-                invincibleTimer = Math.max(invincibleTimer, invincibleTimer > 0 ? invincibleTimer + 60 : 0);
-                magnetTimer = Math.max(magnetTimer, magnetTimer > 0 ? magnetTimer + 60 : 0);
-                superSpeedTimer = Math.max(superSpeedTimer, superSpeedTimer > 0 ? superSpeedTimer + 60 : 0);
-                shieldTimer = Math.max(shieldTimer, shieldTimer > 0 ? shieldTimer + 60 : 0);
-                fatTimer = Math.max(fatTimer, fatTimer > 0 ? fatTimer + 60 : 0);
-                doubleScoreTimer = Math.max(doubleScoreTimer, doubleScoreTimer > 0 ? doubleScoreTimer + 60 : 0);
-                // 也延长speed buff
+                invincibleTimer = invincibleTimer > 0 ? invincibleTimer + 60 : 0;
+                magnetTimer = magnetTimer > 0 ? magnetTimer + 60 : 0;
+                superSpeedTimer = superSpeedTimer > 0 ? superSpeedTimer + 60 : 0;
+                shieldTimer = shieldTimer > 0 ? shieldTimer + 60 : 0;
+                fatTimer = fatTimer > 0 ? fatTimer + 60 : 0;
+                doubleScoreTimer = doubleScoreTimer > 0 ? doubleScoreTimer + 60 : 0;
                 ['speed'].forEach(t => {
                     const b = buffs.get(t);
                     if (b && b.remain > 0) { b.remain += 60; b.duration += 60; }
@@ -159,6 +184,7 @@ export function createGame({ canvas, callbacks }) {
 
     function refreshSpeedFactor() {
         let factor = 1;
+        if (permAbilities.speedBoost) factor *= 1.25; // 永久25%加速
         for (const b of buffs.values()) {
             if (b.factor) factor *= b.factor;
         }
@@ -204,6 +230,7 @@ export function createGame({ canvas, callbacks }) {
         comboCount = 0;
         comboTimer = 0;
         elapsedTime = 0;
+        effectStackCounts.clear();
         scorePopup = null;
         invincibleTimer = 0;
         magnetTimer = 0;
@@ -490,6 +517,7 @@ export function createGame({ canvas, callbacks }) {
             invisible: invisibleTimer > 0,
             shield: shieldTimer > 0,
             fat: fatTimer > 0,
+            fatStack: effectStackCounts.get('fat') || 0,
             deathAnimation,
             lives,
             cheatMode,
@@ -554,6 +582,20 @@ export function createGame({ canvas, callbacks }) {
         getCheatMode: () => cheatMode,
         getTotalScore: () => totalScore,
         getLives: () => lives,
+        getPermAbilities: () => ({ ...permAbilities }),
+        buyPermAbility: (key) => {
+            if (permAbilities[key]) return false;
+            const costs = { durationStack: 30000, effectStack: 30000, speedBoost: 30000 };
+            const cost = costs[key] || 30000;
+            if (totalScore < cost) return false;
+            totalScore -= cost;
+            try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
+            permAbilities[key] = true;
+            try { localStorage.setItem('snake.permAbilities', JSON.stringify(permAbilities)); } catch (e) {}
+            emit('totalScoreChange', totalScore);
+            refreshSpeedFactor();
+            return true;
+        },
 
         // 道具系统
         buyItem: (id) => {

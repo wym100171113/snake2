@@ -232,7 +232,8 @@ export function createRenderer(canvas) {
         const invis = opts.invisible;
         const shield = opts.shield;
         const fat = opts.fat;
-        const fatMul = fat ? 1.8 : 1;
+        const fatStack = opts.fatStack || 0;
+        const fatMul = fat ? (1.3 + fatStack * 0.4) : 1;
 
         ctx.save();
         if (invis) ctx.globalAlpha = 0.03;
