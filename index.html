@@ -111,6 +111,9 @@
                 <button class="btn-icon" id="btn-encyclopedia" type="button" title="食物图鉴">
                     <span>📖</span>
                 </button>
+                <button class="btn-icon" id="btn-perma" type="button" title="永久能力">
+                    <span>⭐</span>
+                </button>
                 <button class="btn-icon" id="btn-sound" type="button" title="音效">
                     <span id="sound-icon">🔊</span>
                 </button>
@@ -283,6 +286,20 @@
             </div>
             <p class="shop-hint">吃到食物后解锁对应图鉴，查看食物属性</p>
             <div class="ency-list" id="ency-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 永久能力面板 -->
+    <div class="overlay" id="perma-panel" hidden>
+        <div class="overlay-card overlay-ach">
+            <div class="ach-panel-header">
+                <h2>⭐ 永久能力</h2>
+                <button class="hud-btn" id="btn-perma-close" type="button" aria-label="关闭">✕</button>
+            </div>
+            <p class="shop-hint">购买后选择一个启用，选择即生效，无需在游戏中使用</p>
+            <div class="perma-list" id="perma-list">
                 <!-- 动态生成 -->
             </div>
         </div>

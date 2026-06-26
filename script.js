@@ -1,6 +1,6 @@
 // script.js — 入口：UI 路由 + 设备检测 + 主题 + 成就 + 皮肤 + 音效 + 音乐 + 作弊 + 道具
 
-import { createGame, ITEMS } from './game/engine.js';
+import { createGame, ITEMS, PERMA_ABILITIES } from './game/engine.js';
 import { createInputController, detectCapabilities } from './game/input.js';
 import { storage } from './game/storage.js';
 import { SNAKE_SKINS } from './game/renderer.js';
@@ -63,6 +63,10 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
+    btnPerma: $('#btn-perma'),
+    permaPanel: $('#perma-panel'),
+    btnPermaClose: $('#btn-perma-close'),
+    permaList: $('#perma-list'),
 };
 
 // ========== 音效 ==========
@@ -283,6 +287,52 @@ function getBuffDesc(buff) {
 
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
+
+// ========== 永久能力面板 ==========
+function renderPermaPanel() {
+    if (!els.permaList) return;
+    const purchases = game.getPermaPurchases();
+    const active = game.getPermaActive();
+    const totalScore = game.getTotalScore();
+    els.permaList.innerHTML = Object.values(PERMA_ABILITIES).map(ab => {
+        const owned = purchases[ab.key];
+        const isActive = active === ab.key;
+        const canBuy = !owned && totalScore >= ab.cost;
+        return `<div class="perma-item ${owned ? 'owned' : ''} ${isActive ? 'active' : ''}">
+            <span class="perma-icon">${ab.icon}</span>
+            <div class="perma-text">
+                <span class="perma-name">${ab.name}</span>
+                <span class="perma-desc">${ab.desc}</span>
+            </div>
+            ${owned
+                ? `<button class="perma-select-btn ${isActive ? 'selected' : ''}" data-perma="${ab.key}">${isActive ? '已启用' : '启用'}</button>`
+                : `<button class="perma-buy-btn" data-perma="${ab.key}" ${canBuy ? '' : 'disabled'}>💰${ab.cost}</button>`
+            }
+        </div>`;
+    }).join('');
+    // 购买按钮
+    els.permaList.querySelectorAll('.perma-buy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.perma;
+            if (game.buyPerma(type)) {
+                sfxUnlock();
+                renderPermaPanel();
+                refreshStats();
+            }
+        });
+    });
+    // 选择按钮
+    els.permaList.querySelectorAll('.perma-select-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.perma;
+            const isActive = active === type;
+            game.selectPerma(isActive ? null : type); // 再次点击取消选择
+            renderPermaPanel();
+        });
+    });
+}
+els.btnPerma?.addEventListener('click', () => { renderPermaPanel(); els.permaPanel.hidden = false; });
+els.btnPermaClose?.addEventListener('click', () => { els.permaPanel.hidden = true; });
 
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }

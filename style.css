@@ -1308,3 +1308,89 @@ button {
 .tier-epic { background: #F3E5F5; color: #7B1FA2; }
 .tier-legendary { background: #FFF3E0; color: #E65100; }
 .tier-jackpot { background: #FCE4EC; color: #C62828; }
+
+/* ========== 永久能力面板 ========== */
+.perma-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 50vh;
+    overflow-y: auto;
+}
+.perma-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    transition: border-color 0.2s;
+}
+.perma-item.owned { border-color: #81C784; }
+.perma-item.active { border-color: #FFD700; background: #FFFDE7; }
+.perma-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+.perma-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.perma-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--color-text);
+}
+.perma-desc {
+    font-size: 11px;
+    color: var(--color-text-soft);
+}
+.perma-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.perma-status.owned-badge {
+    background: #E8F5E9;
+    color: #388E3C;
+}
+.perma-status.active-badge {
+    background: #FFF9C4;
+    color: #F57F17;
+}
+.perma-buy-btn {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius);
+    border: none;
+    background: linear-gradient(135deg, #FFD700, #FFA000);
+    color: #5D4037;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, opacity 0.2s;
+}
+.perma-buy-btn:active { transform: scale(0.95); }
+.perma-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.perma-select-btn {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius);
+    border: 2px solid #FFD700;
+    background: transparent;
+    color: #5D4037;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, background 0.2s;
+}
+.perma-select-btn:active { transform: scale(0.95); }
+.perma-select-btn.selected {
+    background: #FFD700;
+    color: #5D4037;
+}

@@ -30,7 +30,14 @@ export const ITEMS = {
     invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 600, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
     shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 300, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
     shield:     { name: '护盾', icon: '🔰', desc: '8秒护盾', cost: 600, cooldown: 50, buff: { type: 'shield', duration: 8000 } },
-    permanent:  { name: '永久能力', icon: '⭐', desc: '激活永久能力', cost: 30000, cooldown: 0, buff: { type: 'permanent' } },
+};
+
+// 永久能力定义（独立于道具，购买后选择一个启用，选择即生效）
+export const PERMA_ABILITIES = {
+    stackDuration: { key: 'stackDuration', name: '时长叠加', icon: '⏳', desc: '食物作用时长可叠加', cost: 30000 },
+    stackEffect:   { key: 'stackEffect', name: '效果叠加', icon: '🔄', desc: '同一效果最多叠加3层', cost: 30000 },
+    speedBoost:    { key: 'speedBoost', name: '速度提升', icon: '⚡', desc: '速度永久提升+免疫减速', cost: 30000 },
+    extraLife:     { key: 'extraLife', name: '额外生命', icon: '💖', desc: '开局多一条命', cost: 30000 },
 };
 
 export function createGame({ canvas, callbacks }) {
@@ -69,7 +76,8 @@ export function createGame({ canvas, callbacks }) {
     let selectedItems = [null, null];
     let deathAnimation = null;
     let camera = { x: 0, y: 0 };
-    let permanentAbility = false;
+    let permaActive = null; // 当前启用的永久能力: null | 'stackDuration' | 'stackEffect' | 'speedBoost' | 'extraLife'
+    let permaPurchases = { stackDuration: false, stackEffect: false, speedBoost: false, extraLife: false };
     let buffStacks = new Map(); // track how many stacks of each effect
 
     function saveInventory() {
@@ -90,6 +98,30 @@ export function createGame({ canvas, callbacks }) {
         } catch (e) { inventory = new Map(); }
     }
 
+    function savePerma() {
+        try {
+            localStorage.setItem('snake.permaActive', permaActive || '');
+            localStorage.setItem('snake.permaPurchases', JSON.stringify(permaPurchases));
+        } catch (e) {}
+    }
+
+    function loadPerma() {
+        try {
+            permaActive = localStorage.getItem('snake.permaActive') || null;
+            if (permaActive === '') permaActive = null;
+            const raw = JSON.parse(localStorage.getItem('snake.permaPurchases') || '{}');
+            permaPurchases = {
+                stackDuration: !!raw.stackDuration,
+                stackEffect: !!raw.stackEffect,
+                speedBoost: !!raw.speedBoost,
+                extraLife: !!raw.extraLife,
+            };
+        } catch (e) {
+            permaActive = null;
+            permaPurchases = { stackDuration: false, stackEffect: false, speedBoost: false, extraLife: false };
+        }
+    }
+
     renderer.setWorldSize(WORLD_W, WORLD_H);
 
     function emit(evt, payload) {
@@ -100,40 +132,39 @@ export function createGame({ canvas, callbacks }) {
 
     function applyBuff(buff) {
         if (!buff || !snake) return;
-        // 作弊模式：取消负面效果，增强正面效果
         const negativeTypes = ['slow', 'slowTime', 'invisible', 'shrink'];
-        // 永久能力下免疫减速
-        if (permanentAbility && (buff.type === 'slow' || buff.type === 'slowTime')) return;
+        // 速度提升能力：免疫减速
+        if (permaActive === 'speedBoost' && (buff.type === 'slow' || buff.type === 'slowTime')) return;
         if (cheatMode && negativeTypes.includes(buff.type)) return;
         const dur = cheatMode ? (buff.duration || 0) * 2 : buff.duration;
         const factor = cheatMode && buff.factor ? Math.max(buff.factor, 2) : buff.factor;
-        // 永久能力：效果可叠加（最多3层）
+        const stackDur = permaActive === 'stackDuration'; // 时长叠加
+        const stackEff = permaActive === 'stackEffect';   // 效果叠加（最多3层）
         const stackKey = buff.type;
         const currentStacks = buffStacks.get(stackKey) || 0;
-        const maxStacks = permanentAbility ? 3 : 1;
-        if (currentStacks >= maxStacks) return; // 已达最大层数
+        const maxStacks = stackEff ? 3 : 1;
+        if (currentStacks >= maxStacks && buff.type !== 'speed' && buff.type !== 'slow') return;
         buffStacks.set(stackKey, currentStacks + 1);
-        const useDur = permanentAbility ? dur : dur;
         switch (buff.type) {
             case 'speed':
             case 'slow': {
                 const cur = buffs.get(buff.type) || { remain: 0, factor: 1, duration: 0 };
                 cur.factor = factor;
                 cur.duration = dur;
-                cur.remain = dur;
+                cur.remain = stackDur ? cur.remain + dur : Math.max(cur.remain, dur);
                 buffs.set(buff.type, cur);
                 refreshSpeedFactor();
                 break;
             }
             case 'invincible':
-                invincibleTimer = permanentAbility ? invincibleTimer + dur : Math.max(invincibleTimer, dur);
+                invincibleTimer = stackDur ? invincibleTimer + dur : Math.max(invincibleTimer, dur);
                 break;
             case 'magnet':
-                magnetTimer = permanentAbility ? magnetTimer + dur : Math.max(magnetTimer, dur);
+                magnetTimer = stackDur ? magnetTimer + dur : Math.max(magnetTimer, dur);
                 magnetRadius = buff.radius || 150;
                 break;
             case 'superSpeed':
-                superSpeedTimer = permanentAbility ? superSpeedTimer + dur : Math.max(superSpeedTimer, dur);
+                superSpeedTimer = stackDur ? superSpeedTimer + dur : Math.max(superSpeedTimer, dur);
                 setSpeedFactor(snake, factor || 3);
                 break;
             case 'life':
@@ -141,23 +172,22 @@ export function createGame({ canvas, callbacks }) {
                 emit('livesChange', lives);
                 break;
             case 'invisible':
-                invisibleTimer = permanentAbility ? invisibleTimer + dur : Math.max(invisibleTimer, dur);
+                invisibleTimer = stackDur ? invisibleTimer + dur : Math.max(invisibleTimer, dur);
                 break;
             case 'shield':
-                shieldTimer = permanentAbility ? shieldTimer + dur : Math.max(shieldTimer, dur);
+                shieldTimer = stackDur ? shieldTimer + dur : Math.max(shieldTimer, dur);
                 break;
             case 'slowTime':
-                slowTimeTimer = permanentAbility ? slowTimeTimer + dur : Math.max(slowTimeTimer, dur);
+                slowTimeTimer = stackDur ? slowTimeTimer + dur : Math.max(slowTimeTimer, dur);
                 setSpeedFactor(snake, factor || buff.factor || 0.5);
                 break;
             case 'fat':
-                fatTimer = permanentAbility ? fatTimer + dur : Math.max(fatTimer, dur);
+                fatTimer = stackDur ? fatTimer + dur : Math.max(fatTimer, dur);
                 break;
             case 'doubleScore':
-                doubleScoreTimer = permanentAbility ? doubleScoreTimer + dur : Math.max(doubleScoreTimer, dur);
+                doubleScoreTimer = stackDur ? doubleScoreTimer + dur : Math.max(doubleScoreTimer, dur);
                 break;
             case 'extendBuffs':
-                // 延长所有正面效果60秒
                 const EXTEND = 60000;
                 invincibleTimer = invincibleTimer > 0 ? invincibleTimer + EXTEND : 0;
                 magnetTimer = magnetTimer > 0 ? magnetTimer + EXTEND : 0;
@@ -165,18 +195,11 @@ export function createGame({ canvas, callbacks }) {
                 shieldTimer = shieldTimer > 0 ? shieldTimer + EXTEND : 0;
                 fatTimer = fatTimer > 0 ? fatTimer + EXTEND : 0;
                 doubleScoreTimer = doubleScoreTimer > 0 ? doubleScoreTimer + EXTEND : 0;
-                // 也延长speed buff
                 ['speed'].forEach(t => {
                     const b = buffs.get(t);
                     if (b && b.remain > 0) { b.remain += EXTEND; b.duration += EXTEND; }
                 });
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FFD700', 30);
-                break;
-            case 'permanent':
-                permanentAbility = true;
-                refreshSpeedFactor();
-                try { localStorage.setItem('snake.permanentAbility', '1'); } catch (e) {}
-                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FFD700', 40);
                 break;
             case 'shrink':
                 if (snake) {
@@ -195,7 +218,7 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function refreshSpeedFactor() {
-        let factor = permanentAbility ? 1.25 : 1;
+        let factor = permaActive === 'speedBoost' ? 1.25 : 1;
         for (const b of buffs.values()) {
             if (b.factor) factor *= b.factor;
         }
@@ -253,7 +276,7 @@ export function createGame({ canvas, callbacks }) {
         doubleScoreTimer = 0;
         deathAnimation = null;
         cheatScoreDisabled = cheatMode;
-        lives = cheatMode ? MAX_LIVES : 0;
+        lives = cheatMode ? MAX_LIVES : (permaActive === 'extraLife' ? 1 : 0);
         state = STATE.PLAYING;
         lastFrame = performance.now();
         emit('stateChange', state);
@@ -542,7 +565,7 @@ export function createGame({ canvas, callbacks }) {
         lastFrame = performance.now();
         if (callbacks.onBestScore) bestScore = callbacks.onBestScore();
         try { totalScore = parseInt(localStorage.getItem('snake.totalScore') || '0') || 0; } catch (e) { totalScore = 0; }
-        try { permanentAbility = localStorage.getItem('snake.permanentAbility') === '1'; } catch (e) { permanentAbility = false; }
+        loadPerma();
         loadInventory();
         emit('bestChange', bestScore);
         emit('totalScoreChange', totalScore);
@@ -595,11 +618,25 @@ export function createGame({ canvas, callbacks }) {
         getCheatMode: () => cheatMode,
         getTotalScore: () => totalScore,
         getLives: () => lives,
-        getPermanentAbility: () => permanentAbility,
-        setPermanentAbility: (v) => {
-            permanentAbility = v;
+        getPermaActive: () => permaActive,
+        getPermaPurchases: () => ({ ...permaPurchases }),
+        buyPerma: (type) => {
+            if (!PERMA_ABILITIES[type]) return false;
+            if (permaPurchases[type]) return false;
+            if (totalScore < PERMA_ABILITIES[type].cost) return false;
+            totalScore -= PERMA_ABILITIES[type].cost;
+            try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
+            permaPurchases[type] = true;
+            savePerma();
+            emit('totalScoreChange', totalScore);
+            return true;
+        },
+        selectPerma: (type) => {
+            if (type !== null && !permaPurchases[type]) return false;
+            permaActive = type;
             refreshSpeedFactor();
-            try { localStorage.setItem('snake.permanentAbility', v ? '1' : '0'); } catch (e) {}
+            savePerma();
+            return true;
         },
 
         // 道具系统
