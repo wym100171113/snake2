@@ -15,8 +15,8 @@ const STATE = {
     GAME_OVER: 'gameover',
 };
 
-const FOOD_TARGET = 18;
-const BURST_INTERVAL = 6;
+const FOOD_TARGET = 8;
+const BURST_INTERVAL = 18;
 const MAX_LIVES = 3;
 const WORLD_W = 2000;
 const WORLD_H = 2000;
@@ -25,7 +25,7 @@ const WORLD_H = 2000;
 export const ITEMS = {
     invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
     magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 80 } },
-    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
+    superSpeed: { name: '极限加速', icon: '⚡', desc: '3秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 3000, factor: 3 } },
     extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 1000, cooldown: 120, buff: { type: 'life', amount: 1 } },
     invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 400, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
     shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 150, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
@@ -53,7 +53,7 @@ export function createGame({ canvas, callbacks }) {
     let lives = 1;
     let invincibleTimer = 0;
     let magnetTimer = 0;
-    let magnetRadius = 120;
+    let magnetRadius = 80;
     let superSpeedTimer = 0;
     let invisibleTimer = 0;
     let shieldTimer = 0;
@@ -141,23 +141,6 @@ export function createGame({ canvas, callbacks }) {
         if (invisibleTimer > 0) { invisibleTimer -= deltaMs; if (invisibleTimer <= 0) invisibleTimer = 0; }
         if (shieldTimer > 0) { shieldTimer -= deltaMs; if (shieldTimer <= 0) shieldTimer = 0; }
         if (slowTimeTimer > 0) { slowTimeTimer -= deltaMs; if (slowTimeTimer <= 0) { slowTimeTimer = 0; refreshSpeedFactor(); } }
-    }
-
-    function saveInventory() {
-        const obj = {};
-        for (const [id, v] of inventory) {
-            obj[id] = { count: v.count, cooldownRemain: v.cooldownRemain };
-        }
-        try { localStorage.setItem('snake.inventory', JSON.stringify(obj)); } catch (e) {}
-    }
-
-    function loadInventory() {
-        try {
-            const obj = JSON.parse(localStorage.getItem('snake.inventory') || '{}');
-            for (const [id, v] of Object.entries(obj)) {
-                inventory.set(id, { count: v.count, cooldownRemain: v.cooldownRemain || 0 });
-            }
-        } catch (e) { inventory = new Map(); }
     }
 
     function startNewGame() {
@@ -294,12 +277,6 @@ export function createGame({ canvas, callbacks }) {
                 if (head.y + snake.segmentRadius > area.y + area.height) head.y = area.y + area.height - snake.segmentRadius;
             } else if (shieldTimer > 0) {
                 shieldTimer = 0;
-                const head = snake.segments[0];
-                if (head.x - snake.segmentRadius < area.x) head.x = area.x + snake.segmentRadius;
-                if (head.x + snake.segmentRadius > area.x + area.width) head.x = area.x + area.width - snake.segmentRadius;
-                if (head.y - snake.segmentRadius < area.y) head.y = area.y + snake.segmentRadius;
-                if (head.y + snake.segmentRadius > area.y + area.height) head.y = area.y + area.height - snake.segmentRadius;
-                invincibleTimer = 500;
                 flashAlpha = 0.25;
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
@@ -317,7 +294,6 @@ export function createGame({ canvas, callbacks }) {
                 // 不死亡
             } else if (shieldTimer > 0) {
                 shieldTimer = 0;
-                invincibleTimer = 500;
                 flashAlpha = 0.25;
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
@@ -408,15 +384,6 @@ export function createGame({ canvas, callbacks }) {
 
         if (state === STATE.PLAYING && snake && snake.alive) {
             tickBuffs(delta * 1000);
-
-            // tick inventory item cooldowns
-            for (const [id, owned] of inventory) {
-                if (owned.cooldownRemain > 0) {
-                    owned.cooldownRemain -= delta * 1000;
-                    if (owned.cooldownRemain <= 0) owned.cooldownRemain = 0;
-                }
-            }
-
             doStep(delta);
 
             // camera follow snake head
@@ -457,7 +424,6 @@ export function createGame({ canvas, callbacks }) {
         }, now);
 
         emit('tick', { state, score: cheatScoreDisabled ? 0 : score, length: snake ? snake.segments.length : 0, buffs: serializeBuffs() });
-        emit('itemsChange', getSelectedItems());
     }
 
     function start() {
@@ -465,7 +431,6 @@ export function createGame({ canvas, callbacks }) {
         lastFrame = performance.now();
         if (callbacks.onBestScore) bestScore = callbacks.onBestScore();
         try { totalScore = parseInt(localStorage.getItem('snake.totalScore') || '0') || 0; } catch (e) { totalScore = 0; }
-        loadInventory();
         emit('bestChange', bestScore);
         emit('totalScoreChange', totalScore);
         state = STATE.MENU;
@@ -505,10 +470,6 @@ export function createGame({ canvas, callbacks }) {
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    function getSelectedItems() {
-        return selectedItems.map(id => id ? { id, ...ITEMS[id], count: (inventory.get(id) || { count: 0 }).count, cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain } : null);
-    }
-
     return {
         start, stop, resize, startNewGame, togglePause,
         setDirection: setDirectionFromInput,
@@ -532,7 +493,6 @@ export function createGame({ canvas, callbacks }) {
             const owned = inventory.get(id) || { count: 0, cooldownRemain: 0 };
             owned.count++;
             inventory.set(id, owned);
-            saveInventory();
             emit('totalScoreChange', totalScore);
             return true;
         },
@@ -556,10 +516,13 @@ export function createGame({ canvas, callbacks }) {
             owned.count--;
             owned.cooldownRemain = item.cooldown;
             if (owned.count <= 0) inventory.delete(id);
-            saveInventory();
             applyBuff(item.buff);
             emit('itemsChange', getSelectedItems());
             return true;
+        },
+
+        getSelectedItems: () => {
+            return selectedItems.map(id => id ? { id, ...ITEMS[id], count: (inventory.get(id) || { count: 0 }).count, cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain } : null);
         },
 
         getInventory: () => {
@@ -571,7 +534,6 @@ export function createGame({ canvas, callbacks }) {
         },
 
         getItems: () => ITEMS,
-        getSelectedItems,
         loadSelectedItems: () => {
             try { selectedItems = JSON.parse(localStorage.getItem('snake.selectedItems') || '[null,null]'); } catch (e) { selectedItems = [null, null]; }
             return selectedItems;

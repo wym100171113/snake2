@@ -29,7 +29,7 @@ export const FOOD_TYPES = {
     star:      { key:'star',name:'星星',emoji:'⭐',color:'#FFB347',score:50,growth:5,radius:17,lifespan:8000,weight:4,tier:'epic',desc:'闪亮星星，史诗食物'},
     dragonfruit:{ key:'dragonfruit',name:'火龙果',emoji:'🐉',color:'#E91E63',score:60,growth:6,radius:19,lifespan:7000,weight:3,buff:{type:'speed',factor:1.6,duration:7000},tier:'epic',desc:'火龙果，加速7秒'},
     pizza:     { key:'pizza',name:'披萨',emoji:'🍕',color:'#F4A460',score:55,growth:5,radius:19,lifespan:7500,weight:3,buff:{type:'shield',duration:8000},tier:'epic',desc:'美味披萨，护盾8秒'},
-    donut:     { key:'donut',name:'甜甜圈',emoji:'🍩',color:'#FF80AB',score:45,growth:4,radius:17,lifespan:8000,weight:4,buff:{type:'superSpeed',duration:15000,factor:3},tier:'epic',desc:'甜甜圈，15秒3倍速！'},
+    donut:     { key:'donut',name:'甜甜圈',emoji:'🍩',color:'#FF80AB',score:45,growth:4,radius:17,lifespan:8000,weight:4,buff:{type:'superSpeed',duration:3000,factor:3},tier:'epic',desc:'甜甜圈，3秒3倍速！'},
     icecream:  { key:'icecream',name:'冰淇淋',emoji:'🍦',color:'#FFF9C4',score:35,growth:4,radius:16,lifespan:8500,weight:4,buff:{type:'slowTime',duration:5000,factor:0.5},tier:'epic',desc:'冰淇淋，慢动作5秒'},
     burger:    { key:'burger',name:'汉堡',emoji:'🍔',color:'#D7A86E',score:50,growth:5,radius:18,lifespan:8000,weight:3,buff:{type:'speed',factor:1.5,duration:6000},tier:'epic',desc:'大汉堡，加速6秒'},
     taco:      { key:'taco',name:'墨西哥卷',emoji:'🌮',color:'#FFCC80',score:45,growth:4,radius:17,lifespan:8000,weight:4,buff:{type:'magnet',duration:6000,radius:70},tier:'epic',desc:'墨西哥卷，磁力吸引6秒'},

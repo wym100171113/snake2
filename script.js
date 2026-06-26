@@ -19,7 +19,6 @@ const els = {
     statAchievements: $('#stat-achievements'),
     statMaxlen: $('#stat-maxlen'),
     statScore: $('#stat-score'),
-    menuBest: $('#menu-best'),
     hudScore: $('#hud-score'),
     hudLength: $('#hud-length'),
     hudBest: $('#hud-best'),
@@ -383,7 +382,8 @@ function openItemPicker(slot) {
         const o = inv[id];
         return o && o.count > 0 && id !== (selected[1 - slot] ? selected[1 - slot].id : null);
     });
-    // 始终允许打开（空选项可卸下道具）
+    if (available.length === 0) return;
+    // 简单弹窗选择
     let html = `<div class="item-picker-overlay"><div class="item-picker-card"><h3>选择道具</h3><div class="item-picker-list">`;
     html += `<button class="picker-item ${!currentId ? 'active' : ''}" data-id="">🈳 空</button>`;
     for (const [id, item] of available) {
@@ -444,8 +444,8 @@ function refreshItemBtns() {
     });
 }
 
-els.itemBtn0?.addEventListener('pointerdown', (e) => { e.preventDefault(); if (game.useItem(0)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } } });
-els.itemBtn1?.addEventListener('pointerdown', (e) => { e.preventDefault(); if (game.useItem(1)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } } });
+els.itemBtn0?.addEventListener('click', () => { if (game.useItem(0)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } refreshItemBtns(); } });
+els.itemBtn1?.addEventListener('click', () => { if (game.useItem(1)) { if (!skillUsed) { skillUsed = true; unlockAchievement('use_skill'); } refreshItemBtns(); } });
 
 // ========== 皮肤 ==========
 let selectedSkinKey = 'classic';
@@ -480,7 +480,6 @@ function refreshStats() {
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
     els.statScore.textContent = game.getTotalScore();
-    els.menuBest.textContent = storage.getBestScore();
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -495,11 +494,9 @@ function updateMaxLength(len) {
 }
 
 // ========== 计时 ==========
-let gameStartTime = 0, timerInterval = 0, timerPausedAt = 0;
-function startTimer() { gameStartTime = Date.now(); timerPausedAt = 0; clearInterval(timerInterval); timerInterval = setInterval(updateTimer, 500); }
-function pauseTimer() { if (timerPausedAt > 0) return; timerPausedAt = Date.now(); clearInterval(timerInterval); }
-function resumeTimer() { if (timerPausedAt === 0) return; gameStartTime += (Date.now() - timerPausedAt); timerPausedAt = 0; timerInterval = setInterval(updateTimer, 500); }
-function stopTimer() { clearInterval(timerInterval); timerPausedAt = 0; }
+let gameStartTime = 0, timerInterval = 0;
+function startTimer() { gameStartTime = Date.now(); clearInterval(timerInterval); timerInterval = setInterval(updateTimer, 500); }
+function stopTimer() { clearInterval(timerInterval); }
 function updateTimer() {
     const e = Math.floor((Date.now() - gameStartTime) / 1000);
     els.hudTime.textContent = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
@@ -517,8 +514,8 @@ const game = createGame({
         onBestScore: () => storage.getBestScore(),
         stateChange: (s) => {
             if (s === 'menu') showMenu();
-            if (s === 'playing') { hideOverlays(); resumeTimer(); refreshItemBtns(); }
-            if (s === 'paused') { showPause(); pauseTimer(); }
+            if (s === 'playing') { hideOverlays(); refreshItemBtns(); }
+            if (s === 'paused') showPause();
             if ((s === 'playing' || s === 'menu') && musicEnabled) { stopMusic(); startMusic(); }
         },
         scoreChange: ({ score, length }) => {
@@ -533,7 +530,7 @@ const game = createGame({
             if (length >= 100) unlockAchievement('len_100');
             updateMaxLength(length);
         },
-        bestChange: (best) => { els.hudBest.textContent = best; els.menuBest.textContent = best; },
+        bestChange: (best) => { els.hudBest.textContent = best; },
         totalScoreChange: (ts) => { els.statScore.textContent = ts; },
         itemsChange: () => { refreshItemBtns(); refreshItemSlots(); },
         buffChange: (list) => renderBuffs(list),
@@ -658,6 +655,20 @@ function buffMeta(type) {
 
 // ========== 防止滚动 ==========
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
+document.addEventListener('dblclick', e => e.preventDefault());
+
+// ========== 横屏检测 ==========
+let isLandscape = false;
+function updateLandscape() {
+    const wasLandscape = isLandscape;
+    isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+    if (wasLandscape !== isLandscape) {
+        document.body.classList.toggle('landscape', isLandscape);
+    }
+}
+updateLandscape();
+window.addEventListener('resize', updateLandscape);
+window.addEventListener('orientationchange', () => setTimeout(updateLandscape, 100));
 
 // ========== 初始化 ==========
 loadAchievements();
