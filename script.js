@@ -62,8 +62,6 @@ const els = {
     encyPanel: $('#encyclopedia-panel'),
     btnEncyClose: $('#btn-ency-close'),
     encyList: $('#ency-list'),
-    btnPermanent: $('#btn-permanent'),
-    permaStatus: $('#perma-status'),
 };
 
 // ========== 音效 ==========
@@ -285,22 +283,6 @@ function getBuffDesc(buff) {
 els.btnEncy?.addEventListener('click', () => { renderEncyclopediaPanel(); els.encyPanel.hidden = false; });
 els.btnEncyClose?.addEventListener('click', () => { els.encyPanel.hidden = true; });
 
-// 永久能力购买
-els.btnPermanent?.addEventListener('click', () => {
-    if (game.getPermanentAbility()) return;
-    const total = game.getTotalScore();
-    if (total < 30000) {
-        alert(`积分不足！需要 30,000 积分，当前 ${total} 积分`);
-        return;
-    }
-    if (!confirm('确认花费 30,000 积分解锁永久能力？\n\n⭐ 效果：\n1. 食物作用时长可叠加\n2. 同一效果最多叠加3层\n3. 速度永久提升 + 免疫减速')) return;
-    // 扣除积分
-    game.buyPermanentAbility(30000);
-    refreshPermaBtn();
-    refreshStats();
-    sfxUnlock();
-});
-
 function loadAchievements() {
     try { unlockedAchievements = JSON.parse(localStorage.getItem('snake.achievements') || '[]'); } catch (e) { unlockedAchievements = []; }
 }
@@ -499,17 +481,8 @@ function refreshStats() {
     els.statGames.textContent = storage.getSettings().totalGames || 0;
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
-    els.statScore.textContent = storage.getBestScore();
-}
-function refreshPermaBtn() {
-    const owned = game.getPermanentAbility();
-    if (owned) {
-        els.btnPermanent.classList.add('owned');
-        els.permaStatus.textContent = '已解锁 ✓';
-    } else {
-        els.btnPermanent.classList.remove('owned');
-        els.permaStatus.textContent = '未解锁';
-    }
+    const bs = storage.getBestScore() || parseInt(localStorage.getItem('snake._best') || '0') || 0;
+    els.statScore.textContent = bs;
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -526,7 +499,8 @@ function updateMaxLength(len) {
 // ========== 计时 ==========
 let gameElapsed = 0;
 function startTimer() { gameElapsed = 0; }
-function stopTimer() { gameElapsed = 0; updateTimerUI(0); }
+function stopTimer() { updateTimerUI(0); }
+function stopTimerReset() { gameElapsed = 0; updateTimerUI(0); }
 function updateTimerUI(elapsed) {
     if (elapsed === undefined) elapsed = gameElapsed;
     gameElapsed = elapsed;
@@ -594,10 +568,13 @@ const game = createGame({
             }
         },
         gameOver: ({ score, length, isNewBest, bestScore, cheatMode }) => {
-            stopTimer(); sfxDie();
             const elapsed = getElapsed();
+            stopTimer(); sfxDie();
             const storedBest = storage.getBestScore();
             const newBest = storage.setBestScore(score);
+            if (!cheatMode && score > 0) {
+                try { localStorage.setItem('snake._best', String(Math.max(score, parseInt(localStorage.getItem('snake._best') || '0') || 0))); } catch (e) {}
+            }
             els.overScore.textContent = cheatMode ? 'N/A' : score;
             els.overLength.textContent = length;
             els.overTime.textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
@@ -642,7 +619,7 @@ function showMenu() {
     hideOverlays(); stopTimer(); stopMusic();
     els.menuScreen.hidden = false; els.gameScreen.hidden = true;
     input.setActive(false);
-    refreshStats(); refreshSkinSelector(); refreshItemSlots(); refreshPermaBtn();
+    refreshStats(); refreshSkinSelector(); refreshItemSlots();
     if (musicEnabled) startMusic();
 }
 function showGame() {
@@ -697,6 +674,5 @@ loadEatenFoods();
 initTheme();
 initSkin();
 refreshStats();
-refreshPermaBtn();
 showMenu();
 refreshItemSlots();

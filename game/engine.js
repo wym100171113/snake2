@@ -23,13 +23,14 @@ const WORLD_H = 2000;
 
 // 道具定义（积分购买，消耗品，每轮携带2个）
 export const ITEMS = {
-    invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
-    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 150 } },
-    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
-    extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 1000, cooldown: 120, buff: { type: 'life', amount: 1 } },
-    invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 400, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
-    shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 150, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
-    shield:     { name: '护盾', icon: '🔰', desc: '8秒护盾', cost: 350, cooldown: 50, buff: { type: 'shield', duration: 8000 } },
+    invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 800, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
+    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 500, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 150 } },
+    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 400, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
+    extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 8000, cooldown: 120, buff: { type: 'life', amount: 1 } },
+    invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 600, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
+    shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 300, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
+    shield:     { name: '护盾', icon: '🔰', desc: '8秒护盾', cost: 600, cooldown: 50, buff: { type: 'shield', duration: 8000 } },
+    permanent:  { name: '永久能力', icon: '⭐', desc: '激活永久能力', cost: 30000, cooldown: 0, buff: { type: 'permanent' } },
 };
 
 export function createGame({ canvas, callbacks }) {
@@ -139,18 +140,25 @@ export function createGame({ canvas, callbacks }) {
                 break;
             case 'extendBuffs':
                 // 延长所有正面效果60秒
-                invincibleTimer = Math.max(invincibleTimer, invincibleTimer > 0 ? invincibleTimer + 60 : 0);
-                magnetTimer = Math.max(magnetTimer, magnetTimer > 0 ? magnetTimer + 60 : 0);
-                superSpeedTimer = Math.max(superSpeedTimer, superSpeedTimer > 0 ? superSpeedTimer + 60 : 0);
-                shieldTimer = Math.max(shieldTimer, shieldTimer > 0 ? shieldTimer + 60 : 0);
-                fatTimer = Math.max(fatTimer, fatTimer > 0 ? fatTimer + 60 : 0);
-                doubleScoreTimer = Math.max(doubleScoreTimer, doubleScoreTimer > 0 ? doubleScoreTimer + 60 : 0);
+                const EXTEND = 60000;
+                invincibleTimer = invincibleTimer > 0 ? invincibleTimer + EXTEND : 0;
+                magnetTimer = magnetTimer > 0 ? magnetTimer + EXTEND : 0;
+                superSpeedTimer = superSpeedTimer > 0 ? superSpeedTimer + EXTEND : 0;
+                shieldTimer = shieldTimer > 0 ? shieldTimer + EXTEND : 0;
+                fatTimer = fatTimer > 0 ? fatTimer + EXTEND : 0;
+                doubleScoreTimer = doubleScoreTimer > 0 ? doubleScoreTimer + EXTEND : 0;
                 // 也延长speed buff
                 ['speed'].forEach(t => {
                     const b = buffs.get(t);
-                    if (b && b.remain > 0) { b.remain += 60; b.duration += 60; }
+                    if (b && b.remain > 0) { b.remain += EXTEND; b.duration += EXTEND; }
                 });
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FFD700', 30);
+                break;
+            case 'permanent':
+                permanentAbility = true;
+                refreshSpeedFactor();
+                try { localStorage.setItem('snake.permanentAbility', '1'); } catch (e) {}
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FFD700', 40);
                 break;
             case 'shrink':
                 if (snake) {
@@ -227,7 +235,7 @@ export function createGame({ canvas, callbacks }) {
         doubleScoreTimer = 0;
         deathAnimation = null;
         cheatScoreDisabled = cheatMode;
-        lives = cheatMode ? MAX_LIVES : 1;
+        lives = cheatMode ? MAX_LIVES : 0;
         state = STATE.PLAYING;
         lastFrame = performance.now();
         emit('stateChange', state);
@@ -263,7 +271,6 @@ export function createGame({ canvas, callbacks }) {
         slowTimeTimer = 0;
         fatTimer = 0;
         doubleScoreTimer = 0;
-        elapsedTime = 0;
         buffStacks = new Map();
         flashAlpha = 0;
         scorePopup = null;
@@ -287,6 +294,7 @@ export function createGame({ canvas, callbacks }) {
         if (!cheatScoreDisabled) {
             totalScore += score;
             try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
+            try { localStorage.setItem('snake._best', String(Math.max(score, parseInt(localStorage.getItem('snake._best') || '0') || 0))); } catch (e) {}
             emit('totalScoreChange', totalScore);
         }
         emit('stateChange', state);
@@ -573,17 +581,6 @@ export function createGame({ canvas, callbacks }) {
             permanentAbility = v;
             refreshSpeedFactor();
             try { localStorage.setItem('snake.permanentAbility', v ? '1' : '0'); } catch (e) {}
-        },
-        buyPermanentAbility: (cost) => {
-            if (permanentAbility) return false;
-            if (totalScore < cost) return false;
-            totalScore -= cost;
-            try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
-            permanentAbility = true;
-            refreshSpeedFactor();
-            try { localStorage.setItem('snake.permanentAbility', '1'); } catch (e) {}
-            emit('totalScoreChange', totalScore);
-            return true;
         },
 
         // 道具系统
