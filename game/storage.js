@@ -25,6 +25,7 @@ function read() {
 function write(data) {
     try {
         localStorage.setItem(KEY, JSON.stringify(data));
+        Object.assign(memoryFallback, data);
     } catch (e) {
         // 忽略写入失败（隐私模式 / 配额满）
     }
