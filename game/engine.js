@@ -15,8 +15,8 @@ const STATE = {
     GAME_OVER: 'gameover',
 };
 
-const FOOD_TARGET = 8;
-const BURST_INTERVAL = 18;
+const FOOD_TARGET = 20;
+const BURST_INTERVAL = 12;
 const MAX_LIVES = 3;
 const WORLD_W = 2000;
 const WORLD_H = 2000;
@@ -113,8 +113,17 @@ export function createGame({ canvas, callbacks }) {
                 setSpeedFactor(snake, buff.factor || 0.5);
                 break;
             case 'shrink':
-                if (snake) shrink(snake, buff.amount || 3);
-                spawnParticles(snake.segments[snake.segments.length - 1]?.x || 0, snake.segments[snake.segments.length - 1]?.y || 0, '#FFD96A', 12);
+                if (snake) {
+                    const oldLen = snake.segments.length;
+                    shrink(snake, buff.amount || 3);
+                    const newLen = snake.segments.length;
+                    if (newLen < oldLen) {
+                        flashAlpha = 0.15;
+                        const tail = snake.segments[snake.segments.length - 1];
+                        spawnParticles(tail.x, tail.y, '#FFD96A', 20);
+                        spawnParticles(tail.x, tail.y, '#FF8B94', 10);
+                    }
+                }
                 break;
         }
     }
@@ -278,6 +287,12 @@ export function createGame({ canvas, callbacks }) {
             } else if (shieldTimer > 0) {
                 shieldTimer = 0;
                 flashAlpha = 0.25;
+                const head = snake.segments[0];
+                if (head.x - snake.segmentRadius < area.x) head.x = area.x + snake.segmentRadius;
+                if (head.x + snake.segmentRadius > area.x + area.width) head.x = area.x + area.width - snake.segmentRadius;
+                if (head.y - snake.segmentRadius < area.y) head.y = area.y + snake.segmentRadius;
+                if (head.y + snake.segmentRadius > area.y + area.height) head.y = area.y + area.height - snake.segmentRadius;
+                invincibleTimer = Math.max(invincibleTimer, 500);
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
                 flashAlpha = 0.35;
@@ -295,6 +310,7 @@ export function createGame({ canvas, callbacks }) {
             } else if (shieldTimer > 0) {
                 shieldTimer = 0;
                 flashAlpha = 0.25;
+                invincibleTimer = Math.max(invincibleTimer, 500);
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
                 flashAlpha = 0.35;
@@ -382,6 +398,17 @@ export function createGame({ canvas, callbacks }) {
             if (deathAnimation.t > 1.2) deathAnimation = null;
         }
 
+        // tick inventory cooldowns
+        let invChanged = false;
+        for (const [id, v] of inventory) {
+            if (v.cooldownRemain > 0) {
+                v.cooldownRemain -= delta;
+                if (v.cooldownRemain <= 0) v.cooldownRemain = 0;
+                invChanged = true;
+            }
+        }
+        if (invChanged) emit('itemsChange', getSelectedItems());
+
         if (state === STATE.PLAYING && snake && snake.alive) {
             tickBuffs(delta * 1000);
             doStep(delta);
@@ -402,7 +429,7 @@ export function createGame({ canvas, callbacks }) {
             burstTimer -= delta;
             if (burstTimer <= 0) {
                 burstTimer = BURST_INTERVAL + Math.random() * 6;
-                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 3 + Math.floor(Math.random() * 3), cheatMode);
+                const newFoods = burstSpawn(renderer.getVisibleArea(), snake, 5 + Math.floor(Math.random() * 4), cheatMode);
                 foods.push(...newFoods);
             }
         }
@@ -515,7 +542,11 @@ export function createGame({ canvas, callbacks }) {
             if (state !== STATE.PLAYING || !snake) return false;
             owned.count--;
             owned.cooldownRemain = item.cooldown;
-            if (owned.count <= 0) inventory.delete(id);
+            if (owned.count <= 0) {
+                inventory.delete(id);
+                selectedItems[slot] = null;
+                try { localStorage.setItem('snake.selectedItems', JSON.stringify(selectedItems)); } catch (e) {}
+            }
             applyBuff(item.buff);
             emit('itemsChange', getSelectedItems());
             return true;

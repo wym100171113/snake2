@@ -382,8 +382,7 @@ function openItemPicker(slot) {
         const o = inv[id];
         return o && o.count > 0 && id !== (selected[1 - slot] ? selected[1 - slot].id : null);
     });
-    if (available.length === 0) return;
-    // 简单弹窗选择
+    // 始终允许打开（至少可以卸下当前道具）
     let html = `<div class="item-picker-overlay"><div class="item-picker-card"><h3>选择道具</h3><div class="item-picker-list">`;
     html += `<button class="picker-item ${!currentId ? 'active' : ''}" data-id="">🈳 空</button>`;
     for (const [id, item] of available) {
@@ -495,13 +494,22 @@ function updateMaxLength(len) {
 
 // ========== 计时 ==========
 let gameStartTime = 0, timerInterval = 0;
-function startTimer() { gameStartTime = Date.now(); clearInterval(timerInterval); timerInterval = setInterval(updateTimer, 500); }
-function stopTimer() { clearInterval(timerInterval); }
+function startTimer() {
+    gameStartTime = Date.now();
+    clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 500);
+    updateTimer(); // 立即更新显示
+}
+function stopTimer() { clearInterval(timerInterval); timerInterval = 0; }
 function updateTimer() {
+    if (!gameStartTime) return;
     const e = Math.floor((Date.now() - gameStartTime) / 1000);
     els.hudTime.textContent = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
 }
-function getElapsed() { return Math.floor((Date.now() - gameStartTime) / 1000); }
+function getElapsed() {
+    if (!gameStartTime) return 0;
+    return Math.floor((Date.now() - gameStartTime) / 1000);
+}
 
 // ========== 设备 ==========
 const caps = detectCapabilities();
@@ -656,19 +664,6 @@ function buffMeta(type) {
 // ========== 防止滚动 ==========
 ['gesturestart','gesturechange','gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 document.addEventListener('dblclick', e => e.preventDefault());
-
-// ========== 横屏检测 ==========
-let isLandscape = false;
-function updateLandscape() {
-    const wasLandscape = isLandscape;
-    isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
-    if (wasLandscape !== isLandscape) {
-        document.body.classList.toggle('landscape', isLandscape);
-    }
-}
-updateLandscape();
-window.addEventListener('resize', updateLandscape);
-window.addEventListener('orientationchange', () => setTimeout(updateLandscape, 100));
 
 // ========== 初始化 ==========
 loadAchievements();
