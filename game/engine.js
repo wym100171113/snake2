@@ -335,7 +335,6 @@ export function createGame({ canvas, callbacks }) {
         if (!cheatScoreDisabled) {
             totalScore += score;
             try { localStorage.setItem('snake.totalScore', totalScore); } catch (e) {}
-            try { localStorage.setItem('snake._best', String(Math.max(score, parseInt(localStorage.getItem('snake._best') || '0') || 0))); } catch (e) {}
             emit('totalScoreChange', totalScore);
         }
         emit('stateChange', state);

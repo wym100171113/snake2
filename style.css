@@ -1322,10 +1322,10 @@ button {
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
-    background: var(--color-bg);
-    border: 2px solid var(--color-border);
-    transition: border-color 0.2s;
+    border-radius: var(--radius-sm);
+    background: var(--color-cream);
+    border: 2px solid var(--color-mint-1);
+    transition: border-color 0.2s ease, background 0.6s ease;
 }
 .perma-item.owned { border-color: #81C784; }
 .perma-item.active { border-color: #FFD700; background: #FFFDE7; }
@@ -1365,7 +1365,7 @@ button {
 }
 .perma-buy-btn {
     padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     border: none;
     background: linear-gradient(135deg, #FFD700, #FFA000);
     color: #5D4037;
@@ -1379,7 +1379,7 @@ button {
 .perma-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .perma-select-btn {
     padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     border: 2px solid #FFD700;
     background: transparent;
     color: #5D4037;

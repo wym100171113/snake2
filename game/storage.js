@@ -13,12 +13,14 @@ function read() {
         const raw = localStorage.getItem(KEY);
         if (!raw) return { bestScore: 0, settings: {} };
         const obj = JSON.parse(raw);
-        return {
+        const data = {
             bestScore: Number(obj.bestScore) || 0,
             settings: typeof obj.settings === 'object' && obj.settings !== null ? { ...obj.settings } : {},
         };
+        Object.assign(memoryFallback, data);
+        return data;
     } catch (e) {
-        return { bestScore: 0, settings: {} };
+        return { ...memoryFallback };
     }
 }
 

@@ -547,7 +547,7 @@ function refreshStats() {
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
     els.statScore.textContent = game.getTotalScore();
-    const bs = storage.getBestScore() || parseInt(localStorage.getItem('snake._best') || '0') || 0;
+    const bs = storage.getBestScore() || 0;
     if (els.menuBest) els.menuBest.textContent = bs;
 }
 function incrementGames() {
@@ -566,7 +566,7 @@ function updateMaxLength(len) {
 let gameElapsed = 0;
 function startTimer() { gameElapsed = 0; }
 function stopTimer() { updateTimerUI(0); }
-function stopTimerReset() { gameElapsed = 0; updateTimerUI(0); }
+
 function updateTimerUI(elapsed) {
     if (elapsed === undefined) elapsed = gameElapsed;
     gameElapsed = elapsed;
@@ -638,9 +638,6 @@ const game = createGame({
             stopTimer(); sfxDie();
             const storedBest = storage.getBestScore();
             const newBest = storage.setBestScore(score);
-            if (!cheatMode && score > 0) {
-                try { localStorage.setItem('snake._best', String(Math.max(score, parseInt(localStorage.getItem('snake._best') || '0') || 0))); } catch (e) {}
-            }
             els.overScore.textContent = cheatMode ? 'N/A' : score;
             els.overLength.textContent = length;
             els.overTime.textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;

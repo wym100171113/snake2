@@ -80,7 +80,8 @@ export function createInputController({ onDirection, onPause, onReset }) {
     function bindJoystick() {
         const zone = document.getElementById('joystick-zone');
         const knob = document.getElementById('joystick-knob');
-        if (!zone || !knob) return;
+        const joystickEl = document.getElementById('joystick');
+        if (!zone || !knob || !joystickEl) return;
 
         const maxOffset = 38; // 摇杆最大偏移像素
         let center = { x: 0, y: 0 };
