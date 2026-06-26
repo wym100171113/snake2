@@ -480,7 +480,7 @@ function refreshStats() {
     els.statGames.textContent = storage.getSettings().totalGames || 0;
     els.statAchievements.textContent = unlockedAchievements.length;
     els.statMaxlen.textContent = storage.getSettings().maxLength || 0;
-    els.statScore.textContent = game.getTotalScore();
+    els.statScore.textContent = storage.getBestScore();
 }
 function incrementGames() {
     const s = storage.getSettings(); const total = (s.totalGames || 0) + 1;
@@ -495,16 +495,14 @@ function updateMaxLength(len) {
 }
 
 // ========== 计时 ==========
-let gameStartTime = 0, timerInterval = 0;
+let gameStartTime = 0;
 function startTimer() {
     gameStartTime = Date.now();
-    clearInterval(timerInterval);
-    timerInterval = setInterval(updateTimer, 500);
-    updateTimer(); // 立即更新显示
+    updateTimerUI();
 }
-function stopTimer() { clearInterval(timerInterval); timerInterval = 0; }
-function updateTimer() {
-    if (!gameStartTime) return;
+function stopTimer() { gameStartTime = 0; updateTimerUI(); }
+function updateTimerUI() {
+    if (!gameStartTime) { els.hudTime.textContent = '0:00'; return; }
     const e = Math.floor((Date.now() - gameStartTime) / 1000);
     els.hudTime.textContent = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
 }
@@ -544,7 +542,7 @@ const game = createGame({
         totalScoreChange: (ts) => { els.statScore.textContent = ts; },
         itemsChange: () => { refreshItemBtns(); refreshItemSlots(); },
         buffChange: (list) => renderBuffs(list),
-        tick: ({ buffs }) => renderBuffs(buffs),
+        tick: ({ buffs }) => { renderBuffs(buffs); updateTimerUI(); },
         livesChange: () => {},
         cheatChange: (active) => { els.cheatIndicator.hidden = !active; },
         eatEvent: (info) => {

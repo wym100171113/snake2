@@ -77,48 +77,53 @@ export function createGame({ canvas, callbacks }) {
     }
 
     function applyBuff(buff) {
-        if (!buff) return;
+        if (!buff || !snake) return;
+        // 作弊模式：取消负面效果，增强正面效果
+        const negativeTypes = ['slow', 'slowTime', 'invisible', 'shrink'];
+        if (cheatMode && negativeTypes.includes(buff.type)) return;
+        const dur = cheatMode ? (buff.duration || 0) * 2 : buff.duration;
+        const factor = cheatMode && buff.factor ? Math.max(buff.factor, 2) : buff.factor;
         switch (buff.type) {
             case 'speed':
             case 'slow': {
                 const cur = buffs.get(buff.type) || { remain: 0, factor: 1, duration: 0 };
-                cur.factor = buff.factor;
-                cur.duration = buff.duration;
-                cur.remain = buff.duration;
+                cur.factor = factor;
+                cur.duration = dur;
+                cur.remain = dur;
                 buffs.set(buff.type, cur);
                 refreshSpeedFactor();
                 break;
             }
             case 'invincible':
-                invincibleTimer = Math.max(invincibleTimer, buff.duration);
+                invincibleTimer = Math.max(invincibleTimer, dur);
                 break;
             case 'magnet':
-                magnetTimer = Math.max(magnetTimer, buff.duration);
+                magnetTimer = Math.max(magnetTimer, dur);
                 magnetRadius = buff.radius || 150;
                 break;
             case 'superSpeed':
-                superSpeedTimer = Math.max(superSpeedTimer, buff.duration);
-                setSpeedFactor(snake, buff.factor || 3);
+                superSpeedTimer = Math.max(superSpeedTimer, dur);
+                setSpeedFactor(snake, factor || 3);
                 break;
             case 'life':
                 lives = Math.min(lives + (buff.amount || 1), MAX_LIVES);
                 emit('livesChange', lives);
                 break;
             case 'invisible':
-                invisibleTimer = Math.max(invisibleTimer, buff.duration);
+                invisibleTimer = Math.max(invisibleTimer, dur);
                 break;
             case 'shield':
-                shieldTimer = Math.max(shieldTimer, buff.duration);
+                shieldTimer = Math.max(shieldTimer, dur);
                 break;
             case 'slowTime':
-                slowTimeTimer = Math.max(slowTimeTimer, buff.duration);
-                setSpeedFactor(snake, buff.factor || 0.5);
+                slowTimeTimer = Math.max(slowTimeTimer, dur);
+                setSpeedFactor(snake, factor || buff.factor || 0.5);
                 break;
             case 'fat':
-                fatTimer = Math.max(fatTimer, buff.duration);
+                fatTimer = Math.max(fatTimer, dur);
                 break;
             case 'doubleScore':
-                doubleScoreTimer = Math.max(doubleScoreTimer, buff.duration);
+                doubleScoreTimer = Math.max(doubleScoreTimer, dur);
                 break;
             case 'shrink':
                 if (snake) {
@@ -362,6 +367,10 @@ export function createGame({ canvas, callbacks }) {
                 if (!cheatScoreDisabled) score += finalScore;
                 grow(snake, f.growth);
                 if (f.buff) applyBuff(f.buff);
+                if (f.jackpot) {
+                    lives = Math.min(lives + 1, MAX_LIVES);
+                    emit('livesChange', lives);
+                }
 
                 const pc = f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14;
                 spawnParticles(f.x, f.y, f.color, pc);

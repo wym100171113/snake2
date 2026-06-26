@@ -50,9 +50,9 @@ export const FOOD_TYPES = {
     chocolate: { key:'chocolate',name:'巧克力',emoji:'🍫',color:'#795548',score:100,growth:7,radius:18,lifespan:5500,weight:1.2,buff:{type:'invincible',duration:8000},tier:'legendary',desc:'浓情巧克力，无敌8秒'},
     fondue:    { key:'fondue',name:'奶酪火锅',emoji:'🫕',color:'#FFCC80',score:130,growth:8,radius:22,lifespan:5000,weight:1,buff:{type:'fat',duration:20000},tier:'legendary',desc:'奶酪火锅，变粗20秒！'},
     // ── 超级大奖 ──
-    unicorn:   { key:'unicorn',name:'独角兽',emoji:'🦄',color:'#FF6B9D',score:200,growth:10,radius:24,lifespan:5000,weight:0.6,tier:'jackpot',jackpot:true,desc:'传说中的独角兽，超级大奖！'},
-    phoenix:   { key:'phoenix',name:'凤凰',emoji:'🔥',color:'#FF5722',score:300,growth:12,radius:26,lifespan:4000,weight:0.3,tier:'jackpot',jackpot:true,desc:'涅槃凤凰，超级大奖！'},
-    heart:     { key:'heart',name:'生命之心',emoji:'💖',color:'#FF4081',score:150,growth:5,radius:22,lifespan:4500,weight:0.8,buff:{type:'life',amount:1},tier:'jackpot',jackpot:true,desc:'生命之心，加一条命(最多3条)'},
+    unicorn:   { key:'unicorn',name:'独角兽',emoji:'🦄',color:'#FF6B9D',score:200,growth:10,radius:24,lifespan:5000,weight:0.6,tier:'jackpot',jackpot:true,buff:{type:'invincible',duration:60000},desc:'传说中的独角兽，+1命+60秒无敌！'},
+    phoenix:   { key:'phoenix',name:'凤凰',emoji:'🔥',color:'#FF5722',score:300,growth:12,radius:26,lifespan:4000,weight:0.3,tier:'jackpot',jackpot:true,buff:{type:'invincible',duration:60000},desc:'涅槃凤凰，+1命+60秒无敌！'},
+    heart:     { key:'heart',name:'生命之心',emoji:'💖',color:'#FF4081',score:150,growth:5,radius:22,lifespan:4500,weight:0.8,buff:{type:'invincible',duration:60000},tier:'jackpot',jackpot:true,desc:'生命之心，+1命+60秒无敌'},
 };
 
 const FOOD_LIST = Object.values(FOOD_TYPES);

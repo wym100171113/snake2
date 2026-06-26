@@ -235,7 +235,7 @@ export function createRenderer(canvas) {
         const fatMul = fat ? 1.8 : 1;
 
         ctx.save();
-        if (invis) ctx.globalAlpha = 0.08;
+        if (invis) ctx.globalAlpha = 0.03;
 
         // 皮肤拖尾
         if (sk.effect && segs.length > 2) {
@@ -406,6 +406,7 @@ export function createRenderer(canvas) {
                 invincible: state.invincible,
                 invisible: state.invisible,
                 shield: state.shield,
+                fat: state.fat,
             });
         }
         drawTrailParticles();
