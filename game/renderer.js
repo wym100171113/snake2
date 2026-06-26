@@ -231,6 +231,8 @@ export function createRenderer(canvas) {
         const inv = opts.invincible;
         const invis = opts.invisible;
         const shield = opts.shield;
+        const fat = opts.fat;
+        const fatMul = fat ? 1.8 : 1;
 
         ctx.save();
         if (invis) ctx.globalAlpha = 0.08;
@@ -264,14 +266,14 @@ export function createRenderer(canvas) {
         }
 
         // 蛇身阴影
-        ctx.lineWidth = r * 2 + 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.lineWidth = r * 2 * fatMul + 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.strokeStyle = sk.shadow;
         ctx.beginPath(); ctx.moveTo(segs[0].x, segs[0].y);
         for (let i = 1; i < segs.length; i++) ctx.lineTo(segs[i].x, segs[i].y);
         ctx.stroke();
 
         // 蛇身主线
-        ctx.lineWidth = r * 2 - 2;
+        ctx.lineWidth = r * 2 * fatMul - 2;
         ctx.strokeStyle = sk.body;
         ctx.beginPath(); ctx.moveTo(segs[0].x, segs[0].y);
         for (let i = 1; i < segs.length; i++) ctx.lineTo(segs[i].x, segs[i].y);
@@ -280,18 +282,18 @@ export function createRenderer(canvas) {
         // 鳞片
         for (let i = 1; i < segs.length; i++) {
             const b = segs[i];
-            const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+            const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r * fatMul);
             grd.addColorStop(0, sk.scaleHi); grd.addColorStop(1, sk.scaleLo);
-            ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(b.x, b.y, r - 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(b.x, b.y, r * fatMul - 1.5, 0, Math.PI * 2); ctx.fill();
         }
 
         // 蛇头
         const head = segs[0];
-        const grd = ctx.createRadialGradient(head.x - r * 0.3, head.y - r * 0.3, 0, head.x, head.y, r);
+        const grd = ctx.createRadialGradient(head.x - r * 0.3, head.y - r * 0.3, 0, head.x, head.y, r * fatMul);
         grd.addColorStop(0, sk.headHi); grd.addColorStop(1, sk.headLo);
-        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(head.x, head.y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(head.x, head.y, r * fatMul, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = sk.outline; ctx.lineWidth = 1.5; ctx.stroke();
-        drawSnakeFace(head, snake.angle, r);
+        drawSnakeFace(head, snake.angle, r * fatMul);
 
         ctx.restore();
     }

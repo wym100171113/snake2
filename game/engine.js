@@ -24,8 +24,8 @@ const WORLD_H = 2000;
 // 道具定义（积分购买，消耗品，每轮携带2个）
 export const ITEMS = {
     invincible: { name: '无敌护盾', icon: '🛡️', desc: '10秒无敌', cost: 500, cooldown: 60, buff: { type: 'invincible', duration: 10000 } },
-    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 80 } },
-    superSpeed: { name: '极限加速', icon: '⚡', desc: '3秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 3000, factor: 3 } },
+    magnet:     { name: '磁力吸引', icon: '🧲', desc: '8秒吸引食物', cost: 300, cooldown: 45, buff: { type: 'magnet', duration: 8000, radius: 150 } },
+    superSpeed: { name: '极限加速', icon: '⚡', desc: '15秒3倍速', cost: 200, cooldown: 30, buff: { type: 'superSpeed', duration: 15000, factor: 3 } },
     extraLife:  { name: '额外生命', icon: '💖', desc: '加一条命(最多3)', cost: 1000, cooldown: 120, buff: { type: 'life', amount: 1 } },
     invisible:  { name: '隐身', icon: '👻', desc: '4秒隐身', cost: 400, cooldown: 50, buff: { type: 'invisible', duration: 4000 } },
     shrink:     { name: '瘦身', icon: '📏', desc: '减少5节', cost: 150, cooldown: 20, buff: { type: 'shrink', amount: 5 } },
@@ -53,11 +53,13 @@ export function createGame({ canvas, callbacks }) {
     let lives = 1;
     let invincibleTimer = 0;
     let magnetTimer = 0;
-    let magnetRadius = 80;
+    let magnetRadius = 150;
     let superSpeedTimer = 0;
     let invisibleTimer = 0;
     let shieldTimer = 0;
     let slowTimeTimer = 0;
+    let fatTimer = 0;
+    let doubleScoreTimer = 0;
     let cheatMode = false;
     let cheatScoreDisabled = false;
     let totalScore = 0;
@@ -92,7 +94,7 @@ export function createGame({ canvas, callbacks }) {
                 break;
             case 'magnet':
                 magnetTimer = Math.max(magnetTimer, buff.duration);
-                magnetRadius = buff.radius || 80;
+                magnetRadius = buff.radius || 150;
                 break;
             case 'superSpeed':
                 superSpeedTimer = Math.max(superSpeedTimer, buff.duration);
@@ -111,6 +113,12 @@ export function createGame({ canvas, callbacks }) {
             case 'slowTime':
                 slowTimeTimer = Math.max(slowTimeTimer, buff.duration);
                 setSpeedFactor(snake, buff.factor || 0.5);
+                break;
+            case 'fat':
+                fatTimer = Math.max(fatTimer, buff.duration);
+                break;
+            case 'doubleScore':
+                doubleScoreTimer = Math.max(doubleScoreTimer, buff.duration);
                 break;
             case 'shrink':
                 if (snake) {
@@ -150,6 +158,8 @@ export function createGame({ canvas, callbacks }) {
         if (invisibleTimer > 0) { invisibleTimer -= deltaMs; if (invisibleTimer <= 0) invisibleTimer = 0; }
         if (shieldTimer > 0) { shieldTimer -= deltaMs; if (shieldTimer <= 0) shieldTimer = 0; }
         if (slowTimeTimer > 0) { slowTimeTimer -= deltaMs; if (slowTimeTimer <= 0) { slowTimeTimer = 0; refreshSpeedFactor(); } }
+        if (fatTimer > 0) { fatTimer -= deltaMs; if (fatTimer <= 0) fatTimer = 0; }
+        if (doubleScoreTimer > 0) { doubleScoreTimer -= deltaMs; if (doubleScoreTimer <= 0) doubleScoreTimer = 0; }
     }
 
     function startNewGame() {
@@ -179,6 +189,8 @@ export function createGame({ canvas, callbacks }) {
         invisibleTimer = 0;
         shieldTimer = 0;
         slowTimeTimer = 0;
+        fatTimer = 0;
+        doubleScoreTimer = 0;
         deathAnimation = null;
         cheatScoreDisabled = cheatMode;
         lives = cheatMode ? MAX_LIVES : 1;
@@ -215,6 +227,8 @@ export function createGame({ canvas, callbacks }) {
         invisibleTimer = 0;
         shieldTimer = 0;
         slowTimeTimer = 0;
+        fatTimer = 0;
+        doubleScoreTimer = 0;
         flashAlpha = 0;
         scorePopup = null;
         deathAnimation = null;
@@ -269,6 +283,8 @@ export function createGame({ canvas, callbacks }) {
         if (invisibleTimer > 0) list.push({ type: 'invisible', remain: invisibleTimer, duration: invisibleTimer });
         if (shieldTimer > 0) list.push({ type: 'shield', remain: shieldTimer, duration: shieldTimer });
         if (slowTimeTimer > 0) list.push({ type: 'slowTime', remain: slowTimeTimer, duration: slowTimeTimer });
+        if (fatTimer > 0) list.push({ type: 'fat', remain: fatTimer, duration: fatTimer });
+        if (doubleScoreTimer > 0) list.push({ type: 'doubleScore', remain: doubleScoreTimer, duration: doubleScoreTimer });
         return list;
     }
 
@@ -342,7 +358,7 @@ export function createGame({ canvas, callbacks }) {
                 comboCount++;
                 comboTimer = 1.5;
                 const comboBonus = Math.min(comboCount - 1, 5) * 0.1;
-                const finalScore = Math.round(f.score * (1 + comboBonus));
+                const finalScore = Math.round(f.score * (1 + comboBonus) * (doubleScoreTimer > 0 ? 2 : 1));
                 if (!cheatScoreDisabled) score += finalScore;
                 grow(snake, f.growth);
                 if (f.buff) applyBuff(f.buff);
@@ -445,6 +461,7 @@ export function createGame({ canvas, callbacks }) {
             invincible: invincibleTimer > 0,
             invisible: invisibleTimer > 0,
             shield: shieldTimer > 0,
+            fat: fatTimer > 0,
             deathAnimation,
             lives,
             cheatMode,

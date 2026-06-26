@@ -273,6 +273,8 @@ function getBuffDesc(buff) {
         slowTime: `慢动作${buff.factor}x ${buff.duration/1000}秒`,
         shrink: `瘦身${buff.amount}节`,
         life: `加${buff.amount}条命`,
+        fat: `变粗${buff.duration/1000}秒`,
+        doubleScore: `双倍积分${buff.duration/1000}秒`,
     };
     return map[buff.type] || '';
 }
@@ -656,8 +658,9 @@ function buffMeta(type) {
     const map = {
         speed:'⚡ 加速',slow:'🫧 慢动作',invincible:'🛡️ 无敌',magnet:'🧲 磁力',
         superSpeed:'⚡ 极速',invisible:'👻 隐身',shield:'🔰 护盾',slowTime:'⏳ 慢时间',
+        fat:'🐍 变粗',doubleScore:'💎 双倍积分',
     };
-    const colors = { speed:'#E8A33D',slow:'#8B7FD8',invincible:'#FFD700',magnet:'#4FC3F7',superSpeed:'#FF5722',invisible:'#CE93D8',shield:'#90CAF9',slowTime:'#81C784' };
+    const colors = { speed:'#E8A33D',slow:'#8B7FD8',invincible:'#FFD700',magnet:'#4FC3F7',superSpeed:'#FF5722',invisible:'#CE93D8',shield:'#90CAF9',slowTime:'#81C784',fat:'#FF7043',doubleScore:'#FFD700' };
     return { label: map[type] || type, color: colors[type] || '#5C5C77' };
 }
 

@@ -5,23 +5,20 @@ const KEY = 'snake.game.v1';
 
 const memoryFallback = {
     bestScore: 0,
-    settings: { dpadVisible: false, highContrast: false },
+    settings: {},
 };
 
 function read() {
     try {
         const raw = localStorage.getItem(KEY);
-        if (!raw) return { ...memoryFallback };
+        if (!raw) return { bestScore: 0, settings: {} };
         const obj = JSON.parse(raw);
         return {
             bestScore: Number(obj.bestScore) || 0,
-            settings: {
-                dpadVisible: !!obj?.settings?.dpadVisible,
-                highContrast: !!obj?.settings?.highContrast,
-            },
+            settings: typeof obj.settings === 'object' && obj.settings !== null ? { ...obj.settings } : {},
         };
     } catch (e) {
-        return { ...memoryFallback };
+        return { bestScore: 0, settings: {} };
     }
 }
 
