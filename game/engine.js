@@ -638,6 +638,15 @@ export function createGame({ canvas, callbacks, initialQuality = 'high', initial
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
 
+    // 闭包内函数（供内部直接调用，同时作为返回对象的方法）
+    function getSelectedItems() {
+        return selectedItems.map(id => id ? {
+            id, ...ITEMS[id],
+            count: (inventory.get(id) || { count: 0 }).count,
+            cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain,
+        } : null);
+    }
+
     return {
         start, stop, resize, startNewGame, togglePause,
         setDirection: setDirectionFromInput,
@@ -726,9 +735,7 @@ export function createGame({ canvas, callbacks, initialQuality = 'high', initial
             return true;
         },
 
-        getSelectedItems: () => {
-            return selectedItems.map(id => id ? { id, ...ITEMS[id], count: (inventory.get(id) || { count: 0 }).count, cdRemain: (inventory.get(id) || { cooldownRemain: 0 }).cooldownRemain } : null);
-        },
+        getSelectedItems: () => getSelectedItems(),
 
         getInventory: () => {
             const result = {};
