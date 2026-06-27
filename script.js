@@ -769,7 +769,7 @@ function renderBuffs(list) {
     lastBuffsKey = key;
     els.buffBar.innerHTML = list.map(b => {
         const m = buffMeta(b.type);
-        return `<span class="buff-chip" style="color:${m.color}"><span class="buff-chip-dot" style="background:${m.color}"></span>${m.label} ${Math.ceil(b.remain/1000)}s</span>`;
+        return `<span class="buff-chip" style="--buff-color:${m.color}"><span class="buff-chip-dot"></span>${m.label} ${Math.ceil(b.remain/1000)}s</span>`;
     }).join('');
 }
 function buffMeta(type) {

@@ -186,8 +186,8 @@ body {
     background: linear-gradient(135deg, var(--color-bg-1) 0%, var(--color-bg-2) 50%, var(--color-bg-3) 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
-    user-select: none;
     -webkit-user-select: none;
+    user-select: none;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     touch-action: none;
@@ -257,14 +257,14 @@ button {
     animation: rise var(--d) linear infinite;
     animation-delay: calc(var(--d) * -0.5);
     opacity: 0;
-    transform: scale(var(--s));
+    will-change: transform, opacity;
 }
 
 @keyframes rise {
-    0%   { bottom: -10px; opacity: 0; }
+    0%   { transform: translateY(0) scale(var(--s)); opacity: 0; }
     10%  { opacity: 0.8; }
     90%  { opacity: 0.8; }
-    100% { bottom: 105%; opacity: 0; }
+    100% { transform: translateY(-110vh) scale(var(--s)); opacity: 0; }
 }
 
 /* ---------- 屏幕容器 ---------- */
@@ -302,6 +302,7 @@ button {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     animation: pop 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     transition: background 0.6s ease, box-shadow 0.6s ease;
@@ -954,8 +955,8 @@ button {
 
 .hud-pill {
     background: var(--color-card-soft);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     border-radius: var(--radius-pill);
     padding: 6px 14px;
     display: inline-flex;
@@ -975,6 +976,7 @@ button {
     height: 40px;
     border-radius: 50%;
     background: var(--color-card-soft);
+    -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     box-shadow: var(--shadow-soft);
     font-size: 16px;
@@ -999,6 +1001,7 @@ button {
 
 .buff-chip {
     background: var(--color-card-soft);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-radius: var(--radius-pill);
     padding: 4px 12px;
@@ -1007,7 +1010,7 @@ button {
     gap: 6px;
     font-size: 12px;
     font-weight: 700;
-    color: var(--color-text);
+    color: var(--buff-color, var(--color-text));
     box-shadow: var(--shadow-soft);
     animation: chipIn 0.4s ease;
 }
@@ -1017,7 +1020,7 @@ button {
     to   { opacity: 1; transform: scale(1); }
 }
 
-.buff-chip-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.buff-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--buff-color, currentColor); box-shadow: 0 0 8px var(--buff-color, currentColor); }
 
 /* ---------- 画布 ---------- */
 .canvas-wrap {
@@ -1066,8 +1069,8 @@ button {
     height: 120px;
     border-radius: 50%;
     background: var(--color-card-soft);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     border: 2px dashed var(--color-joystick);
     position: relative;
     box-shadow: var(--shadow-soft);
@@ -1148,8 +1151,8 @@ button {
     inset: 0;
     z-index: 20;
     background: var(--overlay-bg);
-    backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
