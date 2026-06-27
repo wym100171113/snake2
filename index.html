@@ -2,8 +2,9 @@
 <html lang="zh-CN" class="theme-heal">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#FFF4F0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FFF4F0" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1A1A2E" media="(prefers-color-scheme: dark)">
     <meta name="description" content="蛇来运转 · 一款治愈系网页贪吃蛇——360° 自由移动，36 种食物，9 款蛇皮肤，28 项成就，5 套主题风格，连击加分，道具商店，随时随地开箱即玩">
     <meta name="keywords" content="贪吃蛇, 网页游戏, 治愈, 休闲, HTML5, 手机, 电脑, 免费, 单机">
     <meta property="og:title" content="蛇来运转 · 治愈贪吃蛇">
@@ -100,25 +101,22 @@
                 </div>
             </div>
 
-            <!-- 成就查看按钮 + 音效 + 技能商店 + 音乐 + 图鉴 -->
+            <!-- 成就查看按钮 + 技能商店 + 图鉴 + 设置 -->
             <div class="menu-row">
-                <button class="btn-icon" id="btn-achievements" type="button" title="成就">
-                    <span>🏆</span>
+                <button class="btn-icon" id="btn-achievements" type="button" aria-label="成就" title="成就">
+                    <span aria-hidden="true">🏆</span>
                 </button>
-                <button class="btn-icon" id="btn-shop" type="button" title="道具商店">
-                    <span>🛒</span>
+                <button class="btn-icon" id="btn-shop" type="button" aria-label="道具商店" title="道具商店">
+                    <span aria-hidden="true">🛒</span>
                 </button>
-                <button class="btn-icon" id="btn-encyclopedia" type="button" title="食物图鉴">
-                    <span>📖</span>
+                <button class="btn-icon" id="btn-encyclopedia" type="button" aria-label="食物图鉴" title="食物图鉴">
+                    <span aria-hidden="true">📖</span>
                 </button>
-                <button class="btn-icon" id="btn-perma" type="button" title="永久能力">
-                    <span>⭐</span>
+                <button class="btn-icon" id="btn-perma" type="button" aria-label="永久能力" title="永久能力">
+                    <span aria-hidden="true">⭐</span>
                 </button>
-                <button class="btn-icon" id="btn-sound" type="button" title="音效">
-                    <span id="sound-icon">🔊</span>
-                </button>
-                <button class="btn-icon" id="btn-music" type="button" title="音乐">
-                    <span id="music-icon">🎵</span>
+                <button class="btn-icon" id="btn-settings" type="button" aria-label="设置" title="设置">
+                    <span aria-hidden="true">⚙️</span>
                 </button>
             </div>
 
@@ -177,13 +175,13 @@
 
         <!-- 游戏中道具按钮 -->
         <div class="game-item-btns">
-            <button class="game-item-btn" id="item-btn-0" hidden type="button">
+            <button class="game-item-btn" id="item-btn-0" hidden type="button" aria-label="使用道具1">
                 <span class="game-item-icon"></span>
                 <span class="game-item-count"></span>
                 <span class="game-item-key"></span>
                 <span class="game-item-cd"></span>
             </button>
-            <button class="game-item-btn" id="item-btn-1" hidden type="button">
+            <button class="game-item-btn" id="item-btn-1" hidden type="button" aria-label="使用道具2">
                 <span class="game-item-icon"></span>
                 <span class="game-item-count"></span>
                 <span class="game-item-key"></span>
@@ -192,9 +190,9 @@
         </div>
 
         <!-- 虚拟遥感（底部居中） -->
-        <div class="joystick" id="joystick" aria-label="虚拟遥感">
-            <div class="joystick-zone" id="joystick-zone">
-                <div class="joystick-knob" id="joystick-knob"></div>
+        <div class="joystick" id="joystick" role="group" aria-label="虚拟遥感控制区">
+            <div class="joystick-zone" id="joystick-zone" role="slider" aria-label="遥感方向" aria-orientation="all" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="0">
+                <div class="joystick-knob" id="joystick-knob" aria-hidden="true"></div>
             </div>
         </div>
     </section>
@@ -301,6 +299,58 @@
             <p class="shop-hint">购买后选择一个启用，选择即生效，无需在游戏中使用</p>
             <div class="perma-list" id="perma-list">
                 <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div class="overlay" id="settings-panel" hidden>
+        <div class="overlay-card overlay-ach settings-card">
+            <div class="ach-panel-header">
+                <h2>⚙️ 设置</h2>
+                <button class="hud-btn" id="btn-settings-close" type="button" aria-label="关闭">✕</button>
+            </div>
+            <div class="settings-list">
+                <div class="setting-row">
+                    <div class="setting-text">
+                        <span class="setting-name">🎨 画质模式</span>
+                        <span class="setting-desc">高画质：完整特效（推荐高性能设备）<br>流畅模式：减少粒子与特效，适合普通电脑</span>
+                    </div>
+                    <div class="toggle-group" role="group" aria-label="画质模式">
+                        <button class="toggle-btn" data-quality="high" type="button">高画质</button>
+                        <button class="toggle-btn" data-quality="low" type="button">流畅</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-text">
+                        <span class="setting-name">⚡ 高刷新率</span>
+                        <span class="setting-desc">每帧拆分多次模拟，蛇身移动更细腻<br>开启后 CPU 占用略增</span>
+                    </div>
+                    <button class="switch" id="switch-high-refresh" type="button" role="switch" aria-checked="false" aria-label="高刷新率">
+                        <span class="switch-knob"></span>
+                    </button>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-text">
+                        <span class="setting-name">🔊 音效</span>
+                        <span class="setting-desc">吃食物、解锁成就、死亡等音效</span>
+                    </div>
+                    <button class="switch" id="switch-sound" type="button" role="switch" aria-checked="true" aria-label="音效">
+                        <span class="switch-knob"></span>
+                    </button>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-text">
+                        <span class="setting-name">🎵 背景音乐</span>
+                        <span class="setting-desc">菜单与游戏中的背景音乐</span>
+                    </div>
+                    <button class="switch" id="switch-music" type="button" role="switch" aria-checked="true" aria-label="背景音乐">
+                        <span class="switch-knob"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

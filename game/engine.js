@@ -6,7 +6,9 @@ import {
     setSpeedFactor,
 } from './snake.js';
 import { maintainFoods, burstSpawn } from './food.js';
-import { createRenderer, updateParticles, spawnParticles, SNAKE_SKINS } from './renderer.js';
+import {
+    createRenderer, updateParticles, spawnParticles, spawnRipple, shakeScreen, SNAKE_SKINS,
+} from './renderer.js';
 
 const STATE = {
     MENU: 'menu',
@@ -40,8 +42,17 @@ export const PERMA_ABILITIES = {
     extraLife:     { key: 'extraLife', name: '额外生命', icon: '💖', desc: '开局多一条命', cost: 30000 },
 };
 
-export function createGame({ canvas, callbacks }) {
-    const renderer = createRenderer(canvas);
+export function createGame({ canvas, callbacks, initialQuality = 'high', initialHighRefreshRate = false }) {
+    let quality = initialQuality === 'low' ? 'low' : 'high';
+    let highRefreshRate = !!initialHighRefreshRate;
+    const renderer = createRenderer(canvas, {
+        quality,
+        onQualityResize: () => {
+            // 画质改变后 dpr 也变了，触发一次 resize 重建画布与背景 pattern
+            try { renderer.resize(currentViewportW, currentViewportH); } catch (e) {}
+        },
+    });
+    let currentViewportW = 0, currentViewportH = 0;
     let state = STATE.MENU;
     let snake = null;
     let foods = [];
@@ -396,8 +407,11 @@ export function createGame({ canvas, callbacks }) {
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
             } else {
                 flashAlpha = 0.35;
-                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', 18);
-                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', 10);
+                const qMul = quality === 'high' ? 1 : 0.6;
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', Math.round(18 * qMul));
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', Math.round(10 * qMul));
+                spawnRipple(snake.segments[0].x, snake.segments[0].y, 'rgba(255,139,148,0.8)', 80, 0.5);
+                shakeScreen(8, 0.35);
                 if (lives > 0) { respawn(); return; }
                 gameOver(); return;
             }
@@ -412,10 +426,14 @@ export function createGame({ canvas, callbacks }) {
                 flashAlpha = 0.25;
                 invincibleTimer = Math.max(invincibleTimer, 500);
                 spawnParticles(snake.segments[0].x, snake.segments[0].y, '#90CAF9', 20);
+                spawnRipple(snake.segments[0].x, snake.segments[0].y, 'rgba(144,202,249,0.8)', 70, 0.5);
             } else {
                 flashAlpha = 0.35;
-                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', 18);
-                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', 10);
+                const qMul = quality === 'high' ? 1 : 0.6;
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#FF8B94', Math.round(18 * qMul));
+                spawnParticles(snake.segments[0].x, snake.segments[0].y, '#A8E6CF', Math.round(10 * qMul));
+                spawnRipple(snake.segments[0].x, snake.segments[0].y, 'rgba(255,139,148,0.8)', 80, 0.5);
+                shakeScreen(8, 0.35);
                 if (lives > 0) { respawn(); return; }
                 gameOver(); return;
             }
@@ -451,14 +469,20 @@ export function createGame({ canvas, callbacks }) {
                     emit('livesChange', lives);
                 }
 
-                const pc = f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14;
+                const qMul = quality === 'high' ? 1 : 0.6;
+                const pc = Math.round((f.jackpot ? 30 : f.tier === 'legendary' ? 22 : f.tier === 'epic' ? 18 : 14) * qMul);
                 spawnParticles(f.x, f.y, f.color, pc);
+                spawnRipple(f.x, f.y, hexAColor(f.color, 0.8), f.jackpot ? 90 : (f.tier === 'legendary' ? 70 : 50), 0.6);
                 if (f.jackpot) {
-                    spawnParticles(f.x, f.y, '#FFD700', 20);
-                    spawnParticles(f.x, f.y, '#FF6B9D', 20);
+                    spawnParticles(f.x, f.y, '#FFD700', Math.round(20 * qMul));
+                    spawnParticles(f.x, f.y, '#FF6B9D', Math.round(20 * qMul));
+                    spawnRipple(f.x, f.y, 'rgba(255,215,0,0.8)', 140, 0.8);
                     flashAlpha = 0.15;
+                    shakeScreen(6, 0.25);
+                } else if (f.tier === 'legendary') {
+                    shakeScreen(3, 0.15);
                 }
-                if (f.buff && f.tier !== 'common') spawnParticles(f.x, f.y, '#FFD96A', 10);
+                if (f.buff && f.tier !== 'common') spawnParticles(f.x, f.y, '#FFD96A', Math.round(10 * qMul));
 
                 if (comboCount >= 3) {
                     scorePopup = { x: f.x, y: f.y - 20, text: `x${comboCount}`, alpha: 1, vy: -60 };
@@ -514,8 +538,14 @@ export function createGame({ canvas, callbacks }) {
         if (invChanged) emit('itemsChange', getSelectedItems());
 
         if (state === STATE.PLAYING && snake && snake.alive) {
-            tickBuffs(delta * 1000);
-            doStep(delta);
+            // 高刷新率模式：把单帧 dt 拆成多个子步长，让蛇移动更细腻
+            const subSteps = highRefreshRate ? 2 : 1;
+            const subDt = delta / subSteps;
+            for (let s = 0; s < subSteps; s++) {
+                tickBuffs(subDt * 1000);
+                doStep(subDt);
+                if (state !== STATE.PLAYING) break; // doStep 可能触发 gameOver
+            }
             elapsedTime += delta;
 
             // camera follow snake head
@@ -524,8 +554,9 @@ export function createGame({ canvas, callbacks }) {
                 const m = renderer.getMetrics();
                 const targetX = head.x - m.viewW / 2;
                 const targetY = head.y - m.viewH / 2;
-                camera.x += (targetX - camera.x) * 0.08;
-                camera.y += (targetY - camera.y) * 0.08;
+                const camLerp = highRefreshRate ? 0.12 : 0.08;
+                camera.x += (targetX - camera.x) * camLerp;
+                camera.y += (targetY - camera.y) * camLerp;
                 camera.x = Math.max(0, Math.min(WORLD_W - m.viewW, camera.x));
                 camera.y = Math.max(0, Math.min(WORLD_H - m.viewH, camera.y));
                 renderer.setCamera(camera.x, camera.y);
@@ -597,7 +628,9 @@ export function createGame({ canvas, callbacks }) {
             wrapH = window.innerHeight;
         }
         const padding = 24;
-        renderer.resize(wrapW - padding, wrapH - padding);
+        currentViewportW = Math.max(280, wrapW - padding);
+        currentViewportH = Math.max(280, wrapH - padding);
+        renderer.resize(currentViewportW, currentViewportH);
     }
 
     function onVisibilityChange() {
@@ -617,6 +650,17 @@ export function createGame({ canvas, callbacks }) {
         getCheatMode: () => cheatMode,
         getTotalScore: () => totalScore,
         getLives: () => lives,
+        getQuality: () => quality,
+        setQuality: (q) => {
+            if (q !== 'low' && q !== 'high') return;
+            if (q === quality) return;
+            quality = q;
+            renderer.setQuality(q);
+            // dpr 可能变化，重建画布
+            try { renderer.resize(currentViewportW, currentViewportH); } catch (e) {}
+        },
+        getHighRefreshRate: () => highRefreshRate,
+        setHighRefreshRate: (v) => { highRefreshRate = !!v; },
         getPermaActive: () => permaActive,
         getPermaPurchases: () => ({ ...permaPurchases }),
         buyPerma: (type) => {
@@ -700,4 +744,13 @@ export function createGame({ canvas, callbacks }) {
             return selectedItems;
         },
     };
+}
+
+// 把 #RRGGBB 转成 rgba(r,g,b,a)
+function hexAColor(hex, a) {
+    const m = String(hex).replace('#', '');
+    const v = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+    const num = parseInt(v, 16);
+    if (Number.isNaN(num)) return hex;
+    return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},${a})`;
 }

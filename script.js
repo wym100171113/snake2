@@ -51,8 +51,6 @@ const els = {
     achIcon: $('#ach-icon'),
     achTitle: $('#ach-title'),
     achDesc: $('#ach-desc'),
-    soundIcon: $('#sound-icon'),
-    musicIcon: $('#music-icon'),
     themeButtons: document.querySelectorAll('.theme-btn'),
     skinOptions: $('#skin-options'),
     cheatIndicator: $('#cheat-indicator'),
@@ -67,6 +65,13 @@ const els = {
     permaPanel: $('#perma-panel'),
     btnPermaClose: $('#btn-perma-close'),
     permaList: $('#perma-list'),
+    btnSettings: $('#btn-settings'),
+    settingsPanel: $('#settings-panel'),
+    btnSettingsClose: $('#btn-settings-close'),
+    switchHighRefresh: $('#switch-high-refresh'),
+    switchSound: $('#switch-sound'),
+    switchMusic: $('#switch-music'),
+    toggleBtns: document.querySelectorAll('.toggle-btn'),
 };
 
 // ========== 音效 ==========
@@ -147,26 +152,19 @@ function toggleMusic() {
 function applyTheme(name) {
     document.documentElement.className = `theme-${name}`;
     storage.setSetting('theme', name);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) {
-        const colors = { heal:'#FFF4F0', dark:'#1A1A2E', forest:'#E8F5E9', ocean:'#E0F7FA', candy:'#FCE4EC' };
-        meta.content = colors[name] || '#FFF4F0';
-    }
+    const colors = { heal:'#FFF4F0', dark:'#1A1A2E', forest:'#E8F5E9', ocean:'#E0F7FA', candy:'#FCE4EC' };
+    const c = colors[name] || '#FFF4F0';
+    // 同步更新 light 主题色（dark meta 保持暗色，让深色模式状态栏不变）
+    const lightMeta = document.querySelector('meta[name="theme-color"][media*="light"]');
+    if (lightMeta) lightMeta.content = c;
     els.themeButtons.forEach(b => b.classList.toggle('active', b.dataset.theme === name));
 }
 function initTheme() { applyTheme(storage.getSettings().theme || 'heal'); }
 els.themeButtons.forEach(btn => btn.addEventListener('click', () => applyTheme(btn.dataset.theme)));
 
-// 音效/音乐
-$('#btn-sound').addEventListener('click', () => {
-    soundEnabled = !soundEnabled;
-    els.soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
-    storage.setSetting('sound', soundEnabled);
-    if (soundEnabled) playTone(440,0.05,'sine',0.04);
-});
-$('#btn-music').addEventListener('click', toggleMusic);
-if (storage.getSettings().sound === false) { soundEnabled = false; els.soundIcon.textContent = '🔇'; }
-if (storage.getSettings().music === false) { musicEnabled = false; els.musicIcon.textContent = '🔇'; }
+// 音效/音乐初始状态（事件绑定见设置面板）
+if (storage.getSettings().sound === false) soundEnabled = false;
+if (storage.getSettings().music === false) musicEnabled = false;
 
 // ========== 作弊模式 ==========
 let cheatKeys = [], cheatTimer = 0;
@@ -495,6 +493,7 @@ function refreshItemBtns() {
         const si = selected[slot];
         if (si && si.count > 0) {
             btn.hidden = false;
+            btn.setAttribute('aria-label', `使用${si.name} (按${slot === 0 ? 'Q' : 'E'})`);
             btn.querySelector('.game-item-icon').textContent = si.icon;
             btn.querySelector('.game-item-count').textContent = si.count;
             btn.querySelector('.game-item-key').textContent = slot === 0 ? 'Q' : 'E';
@@ -580,8 +579,13 @@ const caps = detectCapabilities();
 if (caps.preferJoystick) document.body.classList.add('show-joystick');
 
 // ========== 游戏引擎 ==========
+const savedSettings = storage.getSettings();
+const initialQuality = savedSettings.quality === 'low' ? 'low' : 'high';
+const initialHighRefreshRate = savedSettings.highRefreshRate === true;
 const game = createGame({
     canvas: els.canvas,
+    initialQuality,
+    initialHighRefreshRate,
     callbacks: {
         onBestScore: () => storage.getBestScore(),
         stateChange: (s) => {
@@ -676,6 +680,57 @@ const input = createInputController({
 game.start();
 game.loadSelectedItems();
 requestAnimationFrame(() => game.resize());
+
+// ========== 设置面板 ==========
+function syncSettingsUI() {
+    const q = game.getQuality();
+    els.toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.quality === q));
+    els.switchSound?.setAttribute('aria-checked', soundEnabled ? 'true' : 'false');
+    els.switchMusic?.setAttribute('aria-checked', musicEnabled ? 'true' : 'false');
+    els.switchHighRefresh?.setAttribute('aria-checked', game.getHighRefreshRate() ? 'true' : 'false');
+}
+
+els.btnSettings?.addEventListener('click', () => {
+    syncSettingsUI();
+    els.settingsPanel.hidden = false;
+});
+els.btnSettingsClose?.addEventListener('click', () => { els.settingsPanel.hidden = true; });
+// 点击遮罩外关闭
+els.settingsPanel?.addEventListener('click', (e) => { if (e.target === els.settingsPanel) els.settingsPanel.hidden = true; });
+
+// 音效开关
+els.switchSound?.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    storage.setSetting('sound', soundEnabled);
+    els.switchSound.setAttribute('aria-checked', soundEnabled ? 'true' : 'false');
+    if (soundEnabled) playTone(440, 0.05, 'sine', 0.04);
+});
+
+// 音乐开关
+els.switchMusic?.addEventListener('click', () => {
+    toggleMusic();
+    els.switchMusic.setAttribute('aria-checked', musicEnabled ? 'true' : 'false');
+});
+
+// 高刷新率开关
+els.switchHighRefresh?.addEventListener('click', () => {
+    const v = !game.getHighRefreshRate();
+    game.setHighRefreshRate(v);
+    storage.setSetting('highRefreshRate', v);
+    els.switchHighRefresh.setAttribute('aria-checked', v ? 'true' : 'false');
+});
+
+// 画质切换
+els.toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const q = btn.dataset.quality;
+        game.setQuality(q);
+        storage.setSetting('quality', q);
+        syncSettingsUI();
+    });
+});
+
+syncSettingsUI();
 
 // ========== 视图切换 ==========
 function showMenu() {

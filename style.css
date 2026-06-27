@@ -188,6 +188,8 @@ body {
     -webkit-font-smoothing: antialiased;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     touch-action: none;
     overscroll-behavior: none;
     transition: background 0.6s ease, color 0.6s ease;
@@ -1393,4 +1395,122 @@ button {
 .perma-select-btn.selected {
     background: #FFD700;
     color: #5D4037;
+}
+
+/* ========== 设置面板 ========== */
+.settings-card {
+    max-width: 440px;
+}
+
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    overflow-y: auto;
+    max-height: 60vh;
+    padding-right: var(--space-1);
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-cream);
+    transition: background 0.6s ease;
+}
+
+.setting-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.setting-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.setting-desc {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--color-text-soft);
+}
+
+/* 画质切换按钮组 */
+.toggle-group {
+    display: inline-flex;
+    background: var(--color-card);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+    box-shadow: var(--shadow-soft);
+    flex-shrink: 0;
+}
+
+.toggle-btn {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-soft);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    border: none;
+    white-space: nowrap;
+}
+
+.toggle-btn:hover { transform: scale(1.04); }
+
+.toggle-btn.active {
+    background: linear-gradient(135deg, var(--color-mint-2), var(--color-btn));
+    color: #fff;
+    box-shadow: 0 2px 8px var(--color-btn-glow);
+}
+
+/* 开关 (switch) */
+.switch {
+    flex-shrink: 0;
+    width: 48px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--color-text-soft);
+    opacity: 0.55;
+    position: relative;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    transition: background 0.25s ease, opacity 0.25s ease;
+}
+
+.switch[aria-checked="true"] {
+    background: linear-gradient(135deg, var(--color-mint-2), var(--color-btn));
+    opacity: 1;
+    box-shadow: 0 2px 8px var(--color-btn-glow);
+}
+
+.switch-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.switch[aria-checked="true"] .switch-knob {
+    transform: translateX(20px);
+}
+
+.switch:focus-visible {
+    outline: 2px solid var(--color-mint-2);
+    outline-offset: 2px;
 }
